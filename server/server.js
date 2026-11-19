@@ -84,7 +84,7 @@ function leave(m) {
 function cleanLoad(l) {
   const s = v => (typeof v === 'string' ? v.slice(0, 24) : ''), d = (l && l.drs) || {};
   l = l || {};
-  return { c: s(l.c), js: s(l.js), dk: s(l.dk), drs: { f: s(d.f), l: s(d.l), r: s(d.r), b: s(d.b), n: s(d.n) } };
+  return { c: s(l.c), js: s(l.js), dk: s(l.dk), em: s(l.em), drs: { f: s(d.f), l: s(d.l), r: s(d.r), b: s(d.b), n: s(d.n) } };
 }
 function onMessage(m, d) {
   const r = m.room;
