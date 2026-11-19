@@ -196,6 +196,8 @@ body.layedit #stam{display:none}
 .bootbar{height:16px;border:3px solid var(--paper);border-radius:10px;overflow:hidden;background:#2a2738}
 #bootBar{display:block;height:100%;width:0;background:var(--good);transition:width .25s linear}
 @media (prefers-reduced-motion:reduce){#bootBar{transition:none}}
+#padHelp{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:2;display:none;align-items:center;gap:8px;width:min(560px,calc(100% - 24px));background:rgba(20,18,28,.9);border:2px solid var(--home);border-radius:10px;padding:6px 10px;font-size:14px;font-weight:500;line-height:1.25}
+#padHelp .chip{flex:0 0 auto;padding:5px 10px;font-size:14px}
 .touch #stickzone{display:block}.touch .btn{display:flex}.touch #keys{display:none}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   background:rgba(20,18,28,.82);text-align:center;padding:20px;pointer-events:auto}
@@ -244,6 +246,7 @@ body.pauseset #settings{padding-top:0}
   </nav>
   <div id="coins"></div>
   <div id="toast" role="status"></div>
+  <div id="padHelp"><span>Controller not responding? Press a button on it. If nothing happens, turn the controller off and on while this is open, or</span><button class="chip" id="padFind">look again</button></div>
   <div id="setup">
     <h2>Play to</h2>
     <div class="row"><button class="chip" id="win11">11</button><button class="chip" id="win15">15</button><button class="chip" id="win21">21</button></div>
@@ -803,7 +806,18 @@ canvas.addEventListener('pointerdown',function(e){
   if(e.pointerType==='mouse'&&e.button===0&&save.set.ctl==='kbm'&&game.state==='play'){mouseShoot=true;inp.shoot=true;inp.shootP=true;}
 });
 window.addEventListener('pointerup',function(){if(mouseShoot){mouseShoot=false;inp.shoot=false;inp.shootR=true;}});
-function getPad(){try{var g=navigator.getGamepads?navigator.getGamepads():[];for(var i=0;i<g.length;i++)if(g[i]&&g[i].connected)return g[i];}catch(e){}return null;}
+function getPad(){ // the controller in use: the last one touched, skipping devices that are not real gamepads
+  var g;try{g=navigator.getGamepads?navigator.getGamepads():null;}catch(e){return null;}
+  if(!g)return null;var best=null,i,p,k,act;
+  for(i=0;i<g.length;i++){
+    p=g[i];if(!p||p.connected===false||!p.buttons||p.buttons.length<4||!p.axes)continue;
+    act=false;for(k=0;k<p.buttons.length;k++)if(p.buttons[k]&&p.buttons[k].pressed){act=true;break;}
+    if(!act)for(k=0;k<Math.min(4,p.axes.length);k++)if(Math.abs(p.axes[k])>0.5){act=true;break;}
+    if(act)padIdx=i;if(!best||i===padIdx)best=p;
+  }
+  return best;
+}
+var padIdx=-1;
 function pollPad(){
   var g=getPad();inp.px=inp.py=0;if(!g){inp.padSprint=false;return false;}
   var b=g.buttons,i,start=false;function dn(n){return !!(b[n]&&b[n].pressed);}
@@ -1683,7 +1697,15 @@ function renderSettings(){
     $('bindReset').addEventListener('click',function(){S.lay={size:1,hand:'r',pos:{}};persist();applyControls();renderSettings();toast('Layout reset');});
   }
 }
-window.addEventListener('gamepadconnected',function(){applyControls();if(sheetOpen==='settings')renderSettings();});
+window.addEventListener('gamepadconnected',function(){applyControls();if(sheetOpen==='settings')renderSettings();try{toast('Controller connected');$('padHelp').style.display='none';}catch(e){}});
+window.addEventListener('gamepaddisconnected',function(){if(sheetOpen==='settings')renderSettings();});
+document.addEventListener('pointerdown',function(){try{window.focus();}catch(e){}},true);
+/* Home Screen web apps on iPhone and iPad often miss a controller that Safari itself can see, so offer the known ways to wake it */
+function isWebApp(){try{return navigator.standalone===true||!!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);}catch(e){return false;}}
+setInterval(function(){
+  var el=$('padHelp');if(!el)return;
+  el.style.display=(isWebApp()&&!getPad()&&game.state==='menu'&&sheetOpen===''&&!titleOn&&$('boot').style.display!=='flex')?'flex':'none';
+},1000);
 function persist(){try{localStorage.setItem('blacktop3v3_v2',JSON.stringify(save));}catch(e){}}
 function rebuildUser(){
   var L=BYID[save.eq.char]||CHARS[0],b=buildHuman(L,L.j,L.s,L.nc);
@@ -1749,8 +1771,9 @@ function buildTitle(){
   el.addEventListener('pointermove',function(e){el.style.setProperty('--mx',((e.clientX/window.innerWidth-0.5)*2).toFixed(3));el.style.setProperty('--my',((e.clientY/window.innerHeight-0.5)*2).toFixed(3));});
   el.addEventListener('click',closeTitle);
   window.addEventListener('keydown',function(e){if(titleOn&&(e.code==='Enter'||e.code==='Space')){e.preventDefault();closeTitle();}});
-  var upd=false;try{upd=sessionStorage.getItem('static_updated')==='1';if(upd)sessionStorage.removeItem('static_updated');}catch(e){}
-  if(upd){titleOn=false;el.style.display='none';startBoot(true);}
+  var upd=0;try{upd=+sessionStorage.getItem('static_updated')||0;if(upd)sessionStorage.removeItem('static_updated');}catch(e){}
+  if(upd){titleOn=false;el.style.display='none';startBoot(upd);}
+  $('padFind').addEventListener('click',function(){try{sessionStorage.setItem('static_updated','2');}catch(e){}try{location.reload();}catch(e){}});
 }
 function closeTitle(){if(!titleOn)return;titleOn=false;$('title').style.display='none';startAudio();startBoot(false);}
 /* after the start screen: look for a newer build, download it if there is one, then load in */
@@ -1769,7 +1792,7 @@ function checkUpdate(cb){
 }
 function startBoot(afterUpdate){
   $('boot').style.display='flex';
-  if(afterUpdate){loadSession('Update installed. You are on the newest build.');return;}
+  if(afterUpdate){loadSession(afterUpdate===2?'Looking for your controller. Press a button on it.':'Update installed. You are on the newest build.');return;}
   bootMsg('Checking for updates','Looking for a newer build',12);
   var t0=Date.now(),done=false;
   function finish(res){
