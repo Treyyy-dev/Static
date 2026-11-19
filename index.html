@@ -1140,7 +1140,7 @@ function humanThink(p,I,dt){ // one real player's input, whether it came from th
 /* ================= ONLINE: up to 3v3 real players, quick match =================
    No game server. Players connect straight to each other (WebRTC through the PeerJS public broker).
    One player hosts and runs the match; the others send their inputs and draw what the host reports. */
-var SERVER=''; // the match server's address. Empty = players connect straight to each other.
+var SERVER='wss://static-yod8.onrender.com'; // the match server's address. Empty = players connect straight to each other.
 var MMROOMS=6,MMPRE='static3v3-mm1-',ZEROI={wx:0,wz:0,yaw:0,shoot:false,shootP:false,shootR:false,passP:false,tgt:-1,moveP:false,slot:'n',flick:false,dunkP:false,sprint:false};
 var net={on:false,role:null,peer:null,hostPeer:null,conn:null,guests:[],searching:false,k:0,cd:-1,started:false,trying:null,tmo:0,snap:null,sendT:0,outT:0,out:null,tick:0};
 var ACTS=[null,'shoot','jump','dunk','fall','drib'],BST=['held','shot','pass','loose'],teamRings=[];
