@@ -77,7 +77,7 @@ body.lobby #hud{display:none}
 #setup summary{font-weight:700;font-size:14px;cursor:pointer}
 #setup p{margin:0}
 #play{position:absolute;right:16px;bottom:16px;font-size:26px;padding:14px 36px}
-#baller,#shop{position:absolute;inset:0;display:none;justify-content:flex-end;align-items:stretch;padding:60px 12px 12px;pointer-events:none}
+#baller,#mvp,#shop{position:absolute;inset:0;display:none;justify-content:flex-end;align-items:stretch;padding:60px 12px 12px;pointer-events:none}
 .sheet{pointer-events:auto;width:min(390px,54%);max-height:100%;overflow-y:auto;touch-action:pan-y;background:rgba(20,18,28,.95);border:3px solid var(--home);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:7px}
 .shead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .grid{display:flex;flex-wrap:wrap;gap:6px}
@@ -108,9 +108,9 @@ body.narrow #brand{display:none}
 .how b{color:var(--home)}
 #nav,#coins,#brand{z-index:4}
 #shop{padding:58px 0 0;pointer-events:auto;background:var(--ink);z-index:3}
-#baller{padding:58px 0 0;z-index:3;background:linear-gradient(var(--ink) 58px,transparent 58px)}
+#baller,#mvp{padding:58px 0 0;z-index:3;background:linear-gradient(var(--ink) 58px,transparent 58px)}
 #shopSheet{width:100%;height:100%;max-height:none;border:0;border-radius:0;padding:8px 16px 12px;background:var(--ink)}
-#ballerSheet{width:60%;height:100%;max-height:none;border:0;border-left:4px solid var(--home);border-radius:0;padding:10px 14px 12px;background:var(--ink)}
+#ballerSheet,#mvpSheet{width:60%;height:100%;max-height:none;border:0;border-left:4px solid var(--home);border-radius:0;padding:10px 14px 12px;background:var(--ink)}
 .sheet .shead h2{font-family:var(--display);font-size:clamp(17px,calc(var(--vw)*3.2),26px);letter-spacing:0;text-transform:none;opacity:1;color:var(--home);margin:0}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:132px;gap:8px}
 .sinfo{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:15px;font-weight:700}
@@ -210,8 +210,8 @@ body.layedit #stam{display:none}
 body.post .btn,body.post #stickzone,body.post #role,body.post #bPause,body.post #keys,body.post #meter{display:none!important}
 #modes{display:none;z-index:7}
 #modes .row{display:flex;gap:10px;width:min(440px,calc(var(--vw)*88))}
-#modes .card{text-align:center;padding:12px 10px;width:min(440px,calc(var(--vw)*88));flex:0 0 auto}
-#modes .card b{display:block;font-family:var(--display);font-size:30px;color:var(--home);line-height:1.05}
+#modes .card{text-align:center;padding:12px 8px;flex:1;min-width:0}
+#modes .card b{display:block;font-family:var(--display);font-size:clamp(18px,calc(var(--vw)*3.4),30px);color:var(--home);line-height:1.05}
 #modes .go{min-width:200px}
 #mm{display:none;z-index:8}
 #mm .go{min-width:220px}
@@ -260,6 +260,7 @@ body.pauseset #settings{padding-top:0}
   <nav id="nav" aria-label="Lobby">
     <button class="tab" id="tabHome" aria-pressed="true">Home</button>
     <button class="tab" id="tabBaller" aria-pressed="false">Baller</button>
+    <button class="tab" id="tabMvp" aria-pressed="false">MVP</button>
     <button class="tab" id="tabShop" aria-pressed="false">Gacha</button>
     <button class="tab" id="tabSet" aria-pressed="false">Settings</button>
   </nav>
@@ -276,6 +277,7 @@ body.pauseset #settings{padding-top:0}
   </div>
   <button class="go" id="play">Play</button>
   <div id="baller"><div class="sheet" id="ballerSheet"></div></div>
+  <div id="mvp"><div class="sheet" id="mvpSheet"></div></div>
   <div id="shop"><div class="sheet" id="shopSheet"></div></div>
   <div id="settings"><div class="sheet" id="setSheet"></div></div>
 </div>
@@ -288,7 +290,7 @@ body.pauseset #settings{padding-top:0}
 <div id="post"><div id="postTag"></div><div id="mvpBox"><small>MVP</small><b id="mvpN"></b><span id="mvpS"></span></div><button class="go" id="postSkip">Skip</button></div>
 <div class="ov" id="modes"><h1>GAME MODE</h1>
   <div class="row" role="group" aria-label="Where to play"><button class="chip" id="fOff" aria-pressed="true">Offline</button><button class="chip" id="fOn" aria-pressed="false">Online</button></div>
-  <button class="card" id="mode3" aria-pressed="true"><b>3v3</b><span>First to 21</span></button>
+  <div class="row"><button class="card" id="mode3" aria-pressed="true"><b>3v3</b><span>First to 21</span></button><button class="card" id="modeP" aria-pressed="false"><b>Practice</b><span>Shoot around solo</span></button></div>
   <p id="modeD" style="font-size:15px;opacity:.85"></p>
   <div class="row"><button class="go" id="mBack" style="background:var(--ink);color:var(--paper);min-width:0;flex:1">Back</button><button class="go" id="mStart" style="min-width:0;flex:1.4">Start</button></div></div>
 <div class="ov" id="mm"><h1>FINDING A MATCH</h1><p id="mmS" role="status">Connecting</p><p style="font-size:15px;opacity:.8">Up to 3 on 3. You control one baller. Empty spots are played by the CPU.</p><button class="go" id="mmStart" style="display:none">Start now</button><button class="go" id="mmCancel" style="background:var(--ink);color:var(--paper)">Cancel</button></div>
@@ -1127,6 +1129,7 @@ function localInput(p){ // what the person on this device is asking for, in cour
   var fx=Math.sin(camYaw),fz=Math.cos(camYaw),rx=-fz,rz=fx,wx=fx*inp.iy+rx*inp.ix,wz=fz*inp.iy+rz*inp.ix,tgt=-1,bs=-9;
   if(ball.state==='held'&&ball.holder===p)mates(p).forEach(function(m){var dx=m.x-p.x,dz=m.z-p.z,l=Math.hypot(dx,dz)||1;
     var sc=(inp.ix||inp.iy)?(dx*wx+dz*wz)/l:(dx*fx+dz*fz)/l-l*0.02;if(sc>bs){bs=sc;tgt=players.indexOf(m);}});
+  if(game.practice)tgt=-1;
   hudTgt=tgt;
   var I={wx:wx,wz:wz,yaw:camYaw,shoot:!!inp.shoot,shootP:!!inp.shootP,shootR:!!inp.shootR,passP:!!inp.passP,tgt:tgt,moveP:!!inp.moveP,flick:!!inp.dribSlot,
     slot:inp.dribSlot||((Math.abs(inp.ix)>0.45&&Math.abs(inp.ix)>=Math.abs(inp.iy)*0.8)?(inp.ix>0?'r':'l'):inp.iy<-0.45?'b':inp.iy>0.45?'f':'n'),
@@ -1973,7 +1976,8 @@ function update(dt){
     if(pst&&!layEdit&&!net.on&&!net.searching&&(game.state==='over'||sheetOpen==='')){if(game.state==='over'){if(post)postDone();else begin();return;}if(modesOpen())modeStart();else showModes();if(game.state!=='menu')return;}
     if(game.state==='over'&&post){postUpdate(dt);return;}
     if(game.state==='menu'){
-      var port=VW()<VH(),so=sheetOpen==='baller',la=Math.sin(game.time*0.5)*(so?0.15:0.45),ld=port?(so?5.2:4.0):3.1,lk=Math.min(1,dt*4),th=Math.tan(camera.fov*PI/360);
+      if(user.act==='emote'){user.emT-=dt;if(user.emK==='em2')user.face+=dt*6.5;if(user.emT<=0)endLobbyEmote();}
+      var port=VW()<VH(),so=sheetOpen==='baller'||sheetOpen==='mvp',la=Math.sin(game.time*0.5)*(so?0.15:0.45),ld=port?(so?5.2:4.0):3.1,lk=Math.min(1,dt*4),th=Math.tan(camera.fov*PI/360);
       camPos.x+=(user.x+Math.sin(la)*ld-camPos.x)*lk;camPos.y+=(1.5-camPos.y)*lk;camPos.z+=(user.z+Math.cos(la)*ld-camPos.z)*lk;
       look.x+=(user.x+(so&&!port?0.6*ld*th*camera.aspect:0)-look.x)*lk;look.y+=((port?(so?1.0-0.6*ld*th:0.95):1.1)-look.y)*lk;look.z+=(user.z-look.z)*lk;
       camera.position.copy(camPos);camera.lookAt(look);ringMe.position.set(user.x,0.03,user.z);ringMate.visible=ringMan.visible=false;stamG.visible=false;updateSweat(dt);
@@ -1988,17 +1992,18 @@ function update(dt){
   else{
     if(game.inb){if(ball.state==='held'&&ball.holder===game.inb)game.inb.immune=1;else game.inb=null;}
     for(i=0;i<players.length;i++){
-      p=players[i];
+      p=players[i];if(game.practice&&p!==user)continue;
       if(p.isUser)humanThink(p,localInput(p),dt);
       else if(p.human&&p.net){humanThink(p,p.I||ZEROI,dt);if(p.I){p.I.shootP=p.I.shootR=p.I.passP=p.I.moveP=p.I.dunkP=false;}}
       else aiThink(p,dt);
     }
-    for(i=0;i<players.length;i++)movePlayer(players[i],dt);
+    for(i=0;i<players.length;i++)if(!game.practice||players[i]===user)movePlayer(players[i],dt);
+    if(game.practice&&game.state==='play'){if(ball.state==='loose'){game.looseT=(game.looseT||0)+dt;if(game.looseT>3.5){game.looseT=0;giveBall(user);}}else game.looseT=0;}   // the ball comes back to you
     separate();
     updateBall(dt);
     if(game.state==='play'){
       if(ball.state==='held'||ball.state==='pass'){
-        if(!game.inb)game.clock-=dt;
+        if(!game.inb&&!game.practice)game.clock-=dt;
         if(game.clock<=0){game.clock=0;sayAll('SHOT CLOCK!',-1,1.1,'buzz');var t=game.poss;
           players.forEach(function(q){if(q.act==='shoot')q.act='fall';});
           ball.dead=true;looseBall(0,1,0,9);game.lastScorer=-1;game.state='dead';game.deadT=1.3;game.next=1-t;}
@@ -2007,7 +2012,8 @@ function update(dt){
       game.deadT-=dt;
       if(players.some(function(q){return q.act==='hang';}))game.deadT=Math.max(game.deadT,0.45);   // wait for whoever is on the rim
       if(game.deadT<=0){
-        if(game.score[0]>=WIN||game.score[1]>=WIN)endGame();else setupInbound(game.next);
+        if(game.practice){ball.dead=false;giveBall(user);game.clock=24;game.state='play';}
+        else if(game.score[0]>=WIN||game.score[1]>=WIN)endGame();else setupInbound(game.next);
       }
     }
   }
@@ -2038,11 +2044,20 @@ function newGame(){
   user.stam=1;user.tired=false;user.stamCd=0;inp.tSprint=false;
   inp.shoot=inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;
   game.score=[0,0];hudScore();game.lastScorer=-1;game.time=0;
+  if(game.practice){                                    // shoot-around: just you, the ball and the hoop
+    players.forEach(function(p){p.vx=p.vz=p.wx=p.wz=0;p.y=0;p.vy=0;p.act=null;p.stun=0;p.callT=0;p.faceTo=null;
+      if(p!==user){p.x=(p.idx-1)*1.4+(p.team?0.7:0);p.z=-13.5;p.g.visible=p.shadow.visible=false;}});
+    user.x=0;user.z=atkZ(user.team)-6.5;user.face=0;ball.dead=false;ball.wasShot=false;game.inb=null;game.poss=-1;giveBall(user);game.clock=24;game.state='play';
+    camYaw=camTargetYaw();updateCamera(0.016,true);$('sLblA').textContent='PRACTICE';banner('PRACTICE','var(--home)',1.6);return;
+  }
   setupInbound(0);updateCamera(0.016,true);
   banner('FIRST TO '+WIN,'var(--home)',1.6);
 }
 function startAudio(){try{if(!ac){var AC=window.AudioContext||window.webkitAudioContext;if(AC)ac=new AC();}if(ac&&ac.state==='suspended')ac.resume();}catch(e){}}
+function lobbyEmote(id){user.act='emote';user.emK=id;user.emT=3.6;user.face=0;ball.state='loose';ball.holder=null;ballMesh.visible=ballShadow.visible=false;}
+function endLobbyEmote(){if(user.act!=='emote'||game.state!=='menu')return;user.act=null;user.face=0;ball.state='held';ball.holder=user;ballMesh.visible=ballShadow.visible=true;}
 function lobbyPose(){
+  ballMesh.visible=ballShadow.visible=true;
   players.forEach(function(p){p.x=p.L.lx;p.z=p.L.lz;p.y=0;p.vy=0;p.vx=p.vz=p.wx=p.wz=0;p.act=null;p.stun=0;p.face=p.team===0?0:PI;});
   ball.state='held';ball.holder=user;ball.dead=false;
 }
@@ -2107,7 +2122,8 @@ var MOVES=[
  {id:'dk4',kind:'dk',n:'Meteor',r:5,d:'Launch from way out and fall on the rim.',range:1.0,peak:1.5,dur:0.62,blk:0.2,ok:0.99,anim:'meteor',shout:'METEOR'}
 ];
 var ALL=CHARS.concat(MOVES),BYID={};ALL.forEach(function(x){BYID[x.id]=x;});
-var JS0=BYID.js0,DK0=BYID.dk0,KINDN={char:'Character',js:'Jump shot',dr:'Dribble',dk:'Dunk'};
+var JS0=BYID.js0,DK0=BYID.dk0,KINDN={char:'Character',js:'Jump shot',dr:'Dribble',dk:'Dunk',em:'Emote'};
+var EMS=[{id:'em0',kind:'em',r:3,n:'Flex',d:'Show them the arms.'},{id:'em1',kind:'em',r:3,n:'Dance',d:'Two-step on their court.'},{id:'em2',kind:'em',r:3,n:'Spin',d:'Arms out, take it all in.'},{id:'em3',kind:'em',r:3,n:'Wave',d:'Say hi to the crowd.'}];
 var BANNERS=[
  {n:'Street Legends',d:'The all-round banner. Ace runs every court he steps on.',feat:['k15','k11','k9','js1','dr1','dk2'],b1:'#8a5a00',b2:'#3d2a10'},
  {n:'Storm Runners',d:'Speed and handles. Nobody stays in front of Raijin.',feat:['k12','dr4','k6','k10','dr3','dr1'],b1:'#1b4a8a',b2:'#14213d'},
@@ -2248,6 +2264,7 @@ var toastT=0,sheetOpen='';
 function toast(t){var e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){e.classList.remove('on');},1600);}
 function openSheet(n){
   sheetOpen=n;
+  if(n!=='mvp')endLobbyEmote();$('mvp').style.display=n==='mvp'?'flex':'none';$('tabMvp').setAttribute('aria-pressed',n==='mvp'?'true':'false');
   $('baller').style.display=n==='baller'?'flex':'none';$('shop').style.display=n==='shop'?'flex':'none';
   $('settings').style.display=n==='settings'?'flex':'none';$('tabSet').setAttribute('aria-pressed',n==='settings'?'true':'false');keyCap=padCap=null;if(n==='settings')renderSettings();
   $('setup').style.display=n?'none':'flex';$('play').style.display=n?'none':'';
@@ -2262,6 +2279,8 @@ var POSE={
   dr1:{ry:2.4},dr5:{lean:0.05,hR:-0.7,kR:0.3,hL:0.3},dr6:{lean:0.65,hL:-1.3,kL:0.6},dr7:{lean:0.2,hL:-0.35,kL:0.7,hR:-0.35,kR:0.7},dr2:{sRx:0.5,eR:-0.3},dr3:{hL:-0.45,kL:0.9,hR:-0.45,kR:0.9},dr4:{lean:0.6,hL:-1.2},
   tA:{sRx:-2.45,eR:-0.65,sRz:0.15,sLx:0.15,eL:-1.35,sLz:0.55,hL:0.08,hR:-0.12,kR:0.1,lean:-0.06},
   tE:{sRx:-0.1,sRz:0.5,eR:-1.55,sLx:-0.25,eL:-0.5,sLz:0.2,hL:0.1,kL:0.05,hR:-0.2,kR:0.3,lean:0.02},
+  em:{},em0:{sLx:-1.1,sRx:-1.1,eL:-2.0,eR:-2.0,sLz:0.75,sRz:0.75,lean:-0.14},em1:{sLx:-2.4,sRx:-0.8,eL:-1,eR:-1,sLz:0.3,sRz:0.3,hL:-0.45,kL:0.7,lean:0.05},
+  em2:{sLz:1.35,sRz:1.35,eL:-0.1,eR:-0.1,ry:1.1},em3:{sRx:-2.8,sRz:0.3,eR:-0.45,sLx:0.25,eL:-1.35,sLz:0.55},
   dk:{sRx:-2.95,eR:-0.1,sLx:0.6,eL:-0.7,hL:-1,kL:1.5,hR:0.25,kR:0.6,y:0.5},
   dk1:{sLx:-2.95,eL:-0.1},dk2:{sRx:-4.3},dk3:{ry:2.6},dk4:{y:0.7,hL:-1.3,hR:-1.0,kL:1.6,kR:1.4,sLz:0.9}
 };
@@ -2406,7 +2425,6 @@ function renderLobby(){
     });
     b+='</div>';
   });
-  b+='<h2>MVP emote</h2>'+chips('em_',EMO,save.eq.em||'em0')+'<p class="note">Your baller does this for 5 seconds when you are the MVP.</p>';
   b+='<p class="note">Pull more characters and moves in the gacha.</p>';
   var g='<div class="shead"><h2>Gacha</h2><div class="sinfo"><span>You have <b>'+save.coins+' coins</b></span></div></div>'+
     '<p class="note">Rates on every banner: 5 star 4%, 4 star 18%, 3 star 78%. A 10 pull always has a 4 star or better, and pull 50 without a 5 star is one. Repeats pay you back coins.</p>';
@@ -2415,8 +2433,10 @@ function renderLobby(){
     B.feat.forEach(function(id,i){var x=BYID[id];g+=(i?' &middot; ':'')+'<span class="r'+x.r+'"><span class="stars">'+ST(x.r)+'</span></span> '+x.n+(x.kind==='char'?'':' ('+KINDN[x.kind].toLowerCase()+')');});
     g+='</div><div class="row"><button class="go" id="pull1_'+bi+'">Pull 1 &middot; '+COST1+'</button><button class="go" id="pull10_'+bi+'">Pull 10 &middot; '+COST10+'</button></div></div></div>';
   });
-  $('ballerSheet').innerHTML=b;$('shopSheet').innerHTML=g;
-  EMO.forEach(function(e){$('em_'+e[0]).addEventListener('click',function(){save.eq.em=e[0];persist();renderLobby();});});
+  var mv='<div class="shead"><h2>MVP emote</h2></div><p class="note">Tap an emote to watch it. Your baller does the one you pick for 5 seconds when you are the MVP.</p><div class="bgrid">',ce=save.eq.em||'em0';
+  EMS.forEach(function(x){mv+=cardHTML(x,'em_'+x.id,ce===x.id?'Equipped':'Tap to use',ce===x.id);});
+  $('ballerSheet').innerHTML=b;$('shopSheet').innerHTML=g;$('mvpSheet').innerHTML=mv+'</div>';
+  EMS.forEach(function(x){$('em_'+x.id).addEventListener('click',function(){save.eq.em=x.id;persist();renderLobby();lobbyEmote(x.id);});});
   shown.forEach(function(x){$('eq_'+x.id).addEventListener('click',function(){
     if(x.kind==='dr')save.eq.drs[drSlot]=x.id;else save.eq[x.kind]=x.id;
     persist();if(x.kind==='char'){rebuildUser();applySettings();}renderLobby();});});
@@ -2452,14 +2472,18 @@ function pull(n){
 function setWin(n){WIN=n;}
 var modeOnline=false;
 function modesOpen(){return $('modes').style.display==='flex';}
-function setFilter(on){
-  modeOnline=!!on;save.set.onl=modeOnline?1:0;persist();
-  $('fOff').setAttribute('aria-pressed',on?'false':'true');$('fOn').setAttribute('aria-pressed',on?'true':'false');
-  $('modeD').textContent=on?'Real players, up to 3 on 3. You control one baller and the CPU fills empty spots.':'You and two CPU teammates against a CPU squad.';
+var modeSel='3v3';
+function modeRefresh(){
+  $('fOff').setAttribute('aria-pressed',modeOnline?'false':'true');$('fOn').setAttribute('aria-pressed',modeOnline?'true':'false');
+  $('mode3').setAttribute('aria-pressed',modeSel==='3v3'?'true':'false');$('modeP').setAttribute('aria-pressed',modeSel==='practice'?'true':'false');
+  $('modeD').textContent=modeSel==='practice'?'Just you, a ball and the hoop. No clock, no defenders. Pause to leave.':
+    (modeOnline?'Real players, up to 3 on 3. You control one baller and the CPU fills empty spots.':'You and two CPU teammates against a CPU squad.');
 }
-function showModes(){if(net.on||net.searching)return;setFilter(!!save.set.onl);$('modes').style.display='flex';}
+function setFilter(on){modeOnline=!!on;save.set.onl=modeOnline?1:0;persist();if(modeOnline&&modeSel==='practice')modeSel='3v3';modeRefresh();}
+function setMode(m){modeSel=m;if(m==='practice'&&modeOnline){modeOnline=false;save.set.onl=0;persist();}modeRefresh();}   // practice is offline only
+function showModes(){if(net.on||net.searching)return;modeOnline=!!save.set.onl;modeRefresh();$('modes').style.display='flex';}
 function hideModes(){$('modes').style.display='none';}
-function modeStart(){hideModes();setWin(21);if(modeOnline)mmOpen();else begin();}
+function modeStart(){hideModes();setWin(21);if(modeSel==='practice')begin(true);else if(modeOnline)mmOpen();else begin();}
 function setDiff(d){DIFF=1;}   // every CPU baller plays at Pro
 function applySettings(){
   DSTEAL=[0.6,1,1.5][DIFF];
@@ -2472,10 +2496,12 @@ function applySettings(){
   var lp=[[0,-2.2],[-2.4,-3.2],[2.4,-3.2]];
   LOOKS.forEach(function(t,ti){t.forEach(function(L,i){L.lx=lp[i][0];L.lz=ti===0?lp[i][1]:-lp[i][1]+3;});});
   $('fOff').addEventListener('click',function(){setFilter(false);});$('fOn').addEventListener('click',function(){setFilter(true);});
+  $('mode3').addEventListener('click',function(){setMode('3v3');});$('modeP').addEventListener('click',function(){setMode('practice');});
   $('mBack').addEventListener('click',hideModes);$('mStart').addEventListener('click',modeStart);
   $('tabHome').addEventListener('click',function(){openSheet('');});
   $('tabBaller').addEventListener('click',function(){openSheet('baller');});
   $('tabShop').addEventListener('click',function(){openSheet('shop');});
+  $('tabMvp').addEventListener('click',function(){openSheet('mvp');});
   $('tabSet').addEventListener('click',function(){openSheet('settings');});
   $('resOk').addEventListener('click',function(){$('pullRes').style.display='none';});
   $('layDone').addEventListener('click',function(){setLayEdit(false);});
@@ -2492,8 +2518,9 @@ function applySettings(){
   players.forEach(function(p){p.isUser=p===user;p.human=p===user;});
   rebuildUser();renderLobby();openSheet('');setWin(21);setDiff(1);lobbyPose();buildTitle();camPos.set(0.5,1.6,2);look.set(0,1.1,-2.2);
 })();
-function showLobby(){postClean();if(net.on)netLeave();paused=false;inPauseSet=false;document.body.classList.remove('pauseset');$('pause').style.display='none';renderLobby();openSheet('');game.state='menu';document.body.classList.add('lobby');$('lobby').style.display='block';$('over').style.display='none';$('meter').style.display='none';lobbyPose();}
-function begin(){if(net.on||net.searching)return;postClean();user.load=mkLoad(myLoadout());paused=false;$('pause').style.display='none';openSheet('');startAudio();document.body.classList.remove('lobby');$('lobby').style.display='none';$('over').style.display='none';applySettings();newGame();}
+function showLobby(){postClean();endPractice();if(net.on)netLeave();paused=false;inPauseSet=false;document.body.classList.remove('pauseset');$('pause').style.display='none';renderLobby();openSheet('');game.state='menu';document.body.classList.add('lobby');$('lobby').style.display='block';$('over').style.display='none';$('meter').style.display='none';lobbyPose();}
+function endPractice(){if(!game.practice)return;game.practice=false;players.forEach(function(p){p.g.visible=p.shadow.visible=true;});$('sLblA').textContent='CPU';}
+function begin(pr){if(net.on||net.searching)return;postClean();endLobbyEmote();endPractice();game.practice=pr===true;user.load=mkLoad(myLoadout());paused=false;$('pause').style.display='none';openSheet('');startAudio();document.body.classList.remove('lobby');$('lobby').style.display='none';$('over').style.display='none';applySettings();newGame();}
 $('play').addEventListener('click',showModes);
 $('again').addEventListener('click',begin);
 $('toLobby').addEventListener('click',showLobby);
