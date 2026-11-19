@@ -287,7 +287,7 @@ body.pauseset #settings{padding-top:0}
 <div id="pullRes"><h2 id="resT">You pulled</h2><div id="resGrid"></div><button class="go" id="resOk">OK</button></div>
 <div id="layBar"><span>Drag the buttons where you want them</span><button class="chip" id="layReset">Reset</button><button class="chip" id="layDone">Done</button></div>
 <div class="ov" id="over"><h1 id="oT">GAME</h1><p id="oS"></p><div class="row"><button class="go" id="again">Run it back</button><button class="go" id="toLobby" style="background:var(--ink);color:var(--paper)">Lobby</button></div></div>
-<div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1><p>Street ball, anime rules</p></div><button class="go" id="tStart">Tap to start</button><p id="tPad">On a controller, press any button</p></div>
+<div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1><p>Street ball, anime rules</p></div><button class="go" id="tStart">Start</button><p id="tPad">Tap, press Enter, or press any controller button</p></div>
 <div id="boot" role="status"><div class="bootbox"><h2 id="bootT">Checking for updates</h2><p id="bootS"></p><div class="bootbar"><b id="bootBar"></b></div></div></div>
 <div class="ov" id="pause"><h1>PAUSED</h1><button class="go" id="pResume">Resume</button><button class="go" id="pSettings" style="background:var(--home);color:var(--ink)">Settings</button><button class="go" id="pQuit" style="background:var(--ink);color:var(--paper)">Quit to lobby</button></div>
 <div class="ov" id="err"><h1>Can't load</h1><p>The 3D engine did not load. Check your connection and reopen the page.</p></div>
@@ -811,8 +811,11 @@ var inp={ix:0,iy:0,shoot:false,shootP:false,shootR:false,passP:false,moveP:false
 var keyCap=null,padCap=null,padPrev={},mouseShoot=false,layEdit=false;
 window.addEventListener('keydown',function(e){
   if(keyCap){e.preventDefault();if(e.code!=='Escape'){save.set.keys[keyCap]=e.code;persist();}keyCap=null;renderSettings();applyControls();return;}
+  if(uiKey(e)){e.preventDefault();return;}
   if(e.repeat)return;
-  if(e.code==='Escape'||e.code==='KeyP'){if(inPauseSet){if(!layEdit)pauseBack();}else if(game.state==='play'||game.state==='dead')setPause(!paused);else if(game.state==='menu'&&!hub.walk&&!layEdit&&e.code==='Escape')hubBack();if(e.code==='Escape'||game.state!=='menu')return;}
+  if(e.code==='Escape'&&$('pullRes').style.display==='flex'){$('resOk').click();return;}
+  if(e.code==='Escape'&&game.state==='over'){showLobby();return;}
+  if(e.code==='Escape'||e.code==='KeyP'){if(inPauseSet){if(!layEdit)pauseBack();}else if(game.state==='play'||game.state==='dead')setPause(!paused);else if(game.state==='menu'&&!layEdit&&e.code==='Escape'){if(!hub.walk)hubBack();else if(!titleOn&&!hub.bootOn)hubOpen('settings');}if(e.code==='Escape'||game.state!=='menu')return;}
   if(game.state==='menu'&&hub.walk&&!titleOn&&(e.code==='Space'||e.code==='Enter'||e.code==='KeyE')){hubAct();e.preventDefault();return;}
   inp.keys[e.code]=true;var K=save.set.keys,live=game.state==='play'||game.state==='dead';
   if(e.code===K.shoot){inp.shoot=true;inp.shootP=true;}
@@ -849,35 +852,55 @@ function uiLayer(){
   return null;
 }
 function uiSet(el){if(uiFocus&&uiFocus.classList)uiFocus.classList.remove('padfocus');uiFocus=el;if(el){el.classList.add('padfocus');try{el.scrollIntoView({block:'nearest'});}catch(e){}}}
+function uiList(root){
+  var all=root.querySelectorAll('button'),list=[],i;
+  for(i=0;i<all.length;i++){var r=all[i].getBoundingClientRect();if(r.width>2&&r.height>2&&all[i].offsetParent!==null)list.push({el:all[i],x:r.left+r.width/2,y:r.top+r.height/2});}
+  return list;
+}
+function uiDefault(root){var list=uiList(root);if(!list.length)return null;var go=root.querySelector('.go');uiSet(go&&go.offsetParent!==null?go:list[0].el);return uiFocus;}
+function uiMove(root,dir){ // returns true when focus was only just placed
+  var list=uiList(root),cur=null,i,best=null,bs=1e9;
+  for(i=0;i<list.length;i++)if(list[i].el===uiFocus)cur=list[i];
+  if(!cur){uiDefault(root);return true;}
+  for(i=0;i<list.length;i++){var c=list[i];if(c===cur)continue;var dx=c.x-cur.x,dy=c.y-cur.y,pri=dir==='u'?-dy:dir==='d'?dy:dir==='l'?-dx:dx,sec=(dir==='u'||dir==='d')?Math.abs(dx):Math.abs(dy);
+    if(pri<6)continue;var sc=pri+sec*2.2;if(sc<bs){bs=sc;best=c;}}
+  if(best)uiSet(best.el);return false;
+}
+function uiHas(root){var list=uiList(root);for(var i=0;i<list.length;i++)if(list[i].el===uiFocus)return true;return false;}
 function uiNav(dt){
   var out={a:false,b:false,fresh:false},g=getPad(),root=uiLayer();
-  if(!g){if(uiFocus)uiSet(null);return out;}
+  if(uiFocus&&!root)uiSet(null);
+  if(!g)return out;
   function dn(n){return !!(g.buttons[n]&&g.buttons[n].pressed);}
   var ax=g.axes[0]||0,ay=g.axes[1]||0,dir=dn(12)||ay<-0.6?'u':dn(13)||ay>0.6?'d':dn(14)||ax<-0.6?'l':dn(15)||ax>0.6?'r':'';
   var a=dn(0),b=dn(1),step=false,ea=a&&!uiPrev.a,eb=b&&!uiPrev.b;
   if(dir&&dir!==uiPrev.dir){step=true;uiHold=0.38;}else if(dir){uiHold-=dt;if(uiHold<=0){step=true;uiHold=0.13;}}
   uiPrev.a=a;uiPrev.b=b;uiPrev.dir=dir;
-  if(!root){if(uiFocus)uiSet(null);return out;}
+  if(!root)return out;
   out.a=ea;out.b=eb;
   if(!root.querySelectorAll){out.fresh=true;return out;}
   try{
-    var all=root.querySelectorAll('button'),list=[],i;
-    for(i=0;i<all.length;i++){var r=all[i].getBoundingClientRect();if(r.width>2&&r.height>2&&all[i].offsetParent!==null)list.push({el:all[i],x:r.left+r.width/2,y:r.top+r.height/2});}
-    if(!list.length)return out;
-    var cur=null;for(i=0;i<list.length;i++)if(list[i].el===uiFocus)cur=list[i];
-    if(!cur){
-      if(step||ea){var go=root.querySelector('.go');uiSet(go&&go.offsetParent!==null?go:list[0].el);out.fresh=true;}
-      return out;
-    }
-    if(step){
-      var best=null,bs=1e9;
-      for(i=0;i<list.length;i++){var c=list[i];if(c===cur)continue;var dx=c.x-cur.x,dy=c.y-cur.y,pri=dir==='u'?-dy:dir==='d'?dy:dir==='l'?-dx:dx,sec=(dir==='u'||dir==='d')?Math.abs(dx):Math.abs(dy);
-        if(pri<6)continue;var sc=pri+sec*2.2;if(sc<bs){bs=sc;best=c;}}
-      if(best)uiSet(best.el);
-    }
+    var sy=g.axes[3]||0;                                   // right stick scrolls long pages
+    if(Math.abs(sy)>0.25){var sh=root.querySelectorAll('.sheet'),k;for(k=0;k<sh.length;k++)if(sh[k].offsetParent!==null)sh[k].scrollTop+=sy*dt*900;}
+    if(!uiHas(root)){if(step||ea){uiDefault(root);out.fresh=true;}return out;}
+    if(step)uiMove(root,dir);
     if(ea&&uiFocus){uiFocus.click();out.a=false;}
   }catch(e){}
   return out;
+}
+function uiKey(e){ // the same menus on a keyboard: arrows move, Enter or Space picks
+  var root=uiLayer();if(!root||!root.querySelectorAll)return false;
+  var d={ArrowUp:'u',ArrowDown:'d',ArrowLeft:'l',ArrowRight:'r'}[e.code];
+  try{
+    if(d){uiMove(root,d);return true;}
+    if(e.code==='Enter'||e.code==='Space'){
+      if(uiHas(root)){uiFocus.click();return true;}
+      uiDefault(root);
+      if(paused&&!inPauseSet)setPause(false);else if(game.state==='over')begin();else if($('pullRes').style.display==='flex')$('resOk').click();else if(game.state==='menu'&&hub.panel==='match')begin();
+      return true;
+    }
+  }catch(x){}
+  return false;
 }
 var padStartEdge=false;
 function inp0Start(){var s=padStartEdge;padStartEdge=false;return s;}
@@ -1522,8 +1545,8 @@ function update(dt){
     var un2=uiNav(dt);
     if(!layEdit&&!titleOn){
       if(game.state==='over'){if(inp0Start()||(un2.a&&un2.fresh)){begin();return;}if(un2.b){showLobby();return;}}
-      else if(hub.walk){if(pst)hubAct();}
-      else if($('pullRes').style.display==='flex'){if(un2.b)$('resOk').click();}
+      else if(hub.walk){if(inp0Start()){if(!hub.bootOn)hubOpen('settings');}else if(pst)hubAct();}
+      else if($('pullRes').style.display==='flex'){if(un2.b||(un2.a&&un2.fresh))$('resOk').click();}
       else if(un2.b)hubBack();
       else if(hub.panel==='match'&&(inp0Start()||(un2.a&&un2.fresh))){begin();return;}
     }
@@ -2014,7 +2037,7 @@ function hubUpdate(dt){
   var lbl=hub.near?hub.near.label:'';
   if(lbl!==hub.lastLbl){hub.lastLbl=lbl;$('hubAct').textContent=lbl;$('hubAct').style.display=lbl?'block':'none';}
   var loc=hub.zone==='home'?'Your place':'Downtown';if(loc!==hub.lastLoc){hub.lastLoc=loc;$('hubLoc').textContent=loc;}
-  var tip=(save.set.ctl!=='mobile'&&!getPad())?'Walk to a glowing ring. Using a controller? Press any button on it once to wake it up.':'Walk to a glowing ring';if(tip!==hub.lastTip){hub.lastTip=tip;$('hubTip').textContent=tip;}
+  var tip=(save.set.ctl!=='mobile'&&!getPad())?'Walk to a glowing ring. Esc opens Settings. Using a controller? Press any button on it once to wake it up.':(save.set.ctl==='mobile'?'Walk to a glowing ring':'Walk to a glowing ring. '+padName(9)+' or Esc opens Settings.');if(tip!==hub.lastTip){hub.lastTip=tip;$('hubTip').textContent=tip;}
   if(hub.zone==='city'||hub.t<0.2){for(i=0;i<hub.cars.length;i++)carStep(hub.cars[i],dt);}
   for(i=0;i<hub.npcs.length;i++)npcStep(hub.npcs[i],dt);
   if(hub.spout){var w=1+0.25*Math.sin(hub.t*7);hub.spout.scale.set(w,1.2+0.5*Math.sin(hub.t*5),w);}
@@ -2197,12 +2220,12 @@ function renderSettings(){
   h+='<h2>Quality</h2>'+chips('q_',QO,S.q)+'<p class="note">Low drops the ink outlines and sharpness to run faster.</p>';
   h+='<h2>Controls</h2>'+chips('ctl_',CO,S.ctl);
   if(S.ctl==='kbm'){
-    h+='<h2>Key binds</h2><p class="note">Tap a bind, then press the new key. Esc cancels. Arrow keys always move and left click also shoots.</p>';
+    h+='<h2>Key binds</h2><p class="note">In menus the arrow keys move between buttons, Enter picks and Esc goes back. Esc also opens Settings in the city and pauses a game. </p><p class="note">Tap a bind, then press the new key. Esc cancels. Arrow keys always move and left click also shoots.</p>';
     KEYROWS.forEach(function(r){h+='<div class="bindrow"><span>'+r[1]+'</span><button class="chip" id="kb_'+r[0]+'" aria-pressed="'+(keyCap===r[0]?'true':'false')+'">'+(keyCap===r[0]?'Press a key':keyName(S.keys[r[0]]))+'</button></div>';});
     h+='<div class="row"><button class="chip" id="bindReset">Reset key binds</button></div>';
   }else if(S.ctl==='pad'){
     var g=getPad();
-    h+='<h2>Controller binds</h2>'+(padBlocked?'<p class="note" style="color:var(--hot);opacity:1">This page is not allowed to read controllers where it is open right now. Open the game from its own web address to use one.</p>':'')+'<p class="note">In menus the D-pad or stick moves between buttons, '+padName(0)+' picks and '+padName(1)+' goes back. </p><p class="note">'+(g?'Connected: '+String(g.id).replace(/[<>&]/g,'').slice(0,40):'No controller found yet. Browsers only show a controller to a game after you press a button on it, and moving a stick does not count. Press any button once.')+' The left stick or D-pad moves. Flick the right stick to dribble in that direction. '+padName(9)+' or your shoot button starts a game.</p>';
+    h+='<h2>Controller binds</h2>'+(padBlocked?'<p class="note" style="color:var(--hot);opacity:1">This page is not allowed to read controllers where it is open right now. Open the game from its own web address to use one.</p>':'')+'<p class="note">In menus the D-pad or stick moves between buttons, '+padName(0)+' picks, '+padName(1)+' goes back and the right stick scrolls. '+padName(9)+' opens Settings in the city and pauses a game.</p><p class="note">'+(g?'Connected: '+String(g.id).replace(/[<>&]/g,'').slice(0,40):'No controller found yet. Browsers only show a controller to a game after you press a button on it, and moving a stick does not count. Press any button once.')+' The left stick or D-pad moves. Flick the right stick to dribble in that direction. '+padName(9)+' or your shoot button starts a game.</p>';
     h+='<h2>Button names</h2>'+chips('ps_',PSO,S.padStyle)+'<p class="note">Auto shows PlayStation names when it sees a PlayStation controller. Showing '+(padStyle()==='ps'?'PlayStation':'Xbox')+' names now.</p>';
     PADROWS.forEach(function(r){h+='<div class="bindrow"><span>'+r[1]+'</span><button class="chip" id="pb_'+r[0]+'" aria-pressed="'+(padCap===r[0]?'true':'false')+'">'+(padCap===r[0]?'Press a button':padName(S.pad[r[0]]))+'</button></div>';});
     h+='<div class="row"><button class="chip" id="bindReset">Reset controller binds</button></div>';
