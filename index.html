@@ -211,6 +211,7 @@ body.layedit #stam{display:none}
 .ov ul b{color:var(--home)}
 .go{font-family:var(--display);font-size:22px;padding:12px 28px;border-radius:12px;border:4px solid var(--ink);
   background:var(--hot);color:var(--paper);box-shadow:5px 5px 0 var(--home);cursor:pointer}
+.padf{outline:4px solid #fff!important;outline-offset:3px}
 .go:focus-visible{outline:3px solid var(--paper);outline-offset:3px}
 #over,#err,#pause{display:none}
 #keys{display:none}
@@ -832,7 +833,7 @@ function pollPad(){
   var P=save.set.pad,c={shoot:dn(P.shoot),pass:dn(P.pass),move:dn(P.move),dunk:dn(P.dunk)};
   if(padCap){for(i=0;i<b.length;i++)if(dn(i)&&!padPrev['b'+i]){P[padCap]=i;padCap=null;persist();renderSettings();applyControls();break;}}
   else{
-    if(c.shoot&&!padPrev.shoot){inp.shoot=true;inp.shootP=true;start=true;}
+    if(c.shoot&&!padPrev.shoot){inp.shoot=true;inp.shootP=true;}
     if(!c.shoot&&padPrev.shoot){inp.shoot=false;inp.shootR=true;}
     if(c.pass&&!padPrev.pass)inp.passP=true;
     if(c.move&&!padPrev.move)inp.moveP=true;
@@ -923,7 +924,7 @@ function releaseShot(p){
     sayAll('BLOCKED!',blocker.team,0.9,'steal');return;
   }
   var prob=Math.min(.97,shotBase(d,three)*(0.45+0.75*q)*c*p.shot*J.acc);
-  ball.made=R()<prob;ball.pts=three?3:2;
+  ball.made=R()<prob||(p.human&&q>=0.77);ball.pts=three?3:2;   // a PERFECT release by a real player always drops
   ball.p0.copy(ball.pos);ball.p1.set(0,RIMY,hz);
   if(!ball.made){var a=R()*PI*2,r=0.2+R()*0.12;ball.p1.x+=Math.cos(a)*r;ball.p1.z+=Math.sin(a)*r;}
   ball.T=Math.max(0.6,Math.min(1.7,0.5+d*0.09));ball.arc=(0.8+d*0.13)*J.arc;ball.t=0;ball.state='shot';
@@ -1738,8 +1739,77 @@ function setPause(on){
 function pauseSettings(){$('pause').style.display='none';inPauseSet=true;document.body.classList.add('pauseset');$('lobby').style.display='block';openSheet('settings');}
 function pauseBack(){inPauseSet=false;document.body.classList.remove('pauseset');openSheet('');$('lobby').style.display='none';$('pause').style.display='flex';}
 function pauseQuit(){paused=false;inPauseSet=false;document.body.classList.remove('pauseset');$('pause').style.display='none';clearInput();showLobby();}
+/* ----- menus by controller: stick or d-pad moves the highlight, Cross/A selects, Circle/B goes back ----- */
+var mnav={cur:null,cx:0,cy:0,pa:true,pb:true,dir:'',t:0,seen:0};
+function navCands(){
+  var all=document.querySelectorAll('button,summary,select,[role="button"],.item,.card,.chip,.sitem,.dot'),out=[],W=window.innerWidth,H=window.innerHeight,i,el,r,cx,cy,t;
+  for(i=0;i<all.length;i++){
+    el=all[i];if(el.disabled)continue;r=el.getBoundingClientRect();if(r.width<6||r.height<6)continue;
+    cx=r.left+r.width/2;cy=r.top+r.height/2;
+    if(cx>=0&&cx<W&&cy>=0&&cy<H){t=document.elementFromPoint(cx,cy);if(!t||!(t===el||el.contains(t)))continue;}
+    else if(!el.closest||!el.closest('.sheet'))continue;      // off screen only counts inside a scrolling page
+    el._r=r;el._cx=cx;el._cy=cy;out.push(el);
+  }
+  return out;
+}
+function navSet(el){
+  if(mnav.cur&&mnav.cur!==el)mnav.cur.classList.remove('padf');
+  mnav.cur=el;if(!el)return;el.classList.add('padf');
+  try{el.scrollIntoView({block:'nearest',inline:'nearest'});}catch(e){}
+  var r=el.getBoundingClientRect();mnav.cx=r.left+r.width/2;mnav.cy=r.top+r.height/2;
+}
+function navCur(c){ // the highlighted control, or the one now sitting where it was (menus redraw themselves)
+  if(mnav.cur&&c.indexOf(mnav.cur)>=0)return mnav.cur;
+  if(!mnav.cur)return null;
+  var best=null,bd=70,i,d;for(i=0;i<c.length;i++){d=Math.hypot(c[i]._cx-mnav.cx,c[i]._cy-mnav.cy);if(d<bd){bd=d;best=c[i];}}
+  if(best)navSet(best);else{mnav.cur.classList.remove('padf');mnav.cur=null;}
+  return best;
+}
+function navDefault(c){
+  var i,p=$('play');if(c.indexOf(p)>=0)return p;
+  for(i=0;i<c.length;i++)if(c[i].classList.contains('go'))return c[i];
+  return c[0]||null;
+}
+function navMove(dx,dy){
+  var c=navCands(),cur=navCur(c),i,o,a,b,prim,perp,best=null,bs=1e9,sc;
+  if(!cur){navSet(navDefault(c));return;}
+  a=cur.getBoundingClientRect();
+  for(i=0;i<c.length;i++){
+    o=c[i];if(o===cur||o.contains(cur)||cur.contains(o))continue;b=o._r;
+    if(dx){prim=(o._cx-mnav.cx)*dx;perp=Math.max(0,b.top-a.bottom,a.top-b.bottom);}
+    else{prim=(o._cy-mnav.cy)*dy;perp=Math.max(0,b.left-a.right,a.left-b.right);}
+    if(prim<6)continue;sc=prim+perp*2.4;if(sc<bs){bs=sc;best=o;}
+  }
+  if(best)navSet(best);
+}
+function navBack(){
+  if($('pullRes').style.display&&$('pullRes').style.display!=='none'){$('resOk').click();return;}
+  if($('mm').style.display==='flex'){$('mmCancel').click();return;}
+  if(paused){if(inPauseSet)pauseBack();else setPause(false);return;}
+  if(game.state==='over'){$('toLobby').click();return;}
+  if(sheetOpen!=='')$('tabHome').click();
+}
+function padMenu(){
+  var g=getPad(),now=performance.now();
+  if(!g){mnav.pa=mnav.pb=true;return;}
+  var b=g.buttons;function dn(n){return !!(b[n]&&b[n].pressed);}
+  var stale=now-mnav.seen>250;mnav.seen=now;                 // just came from gameplay: ignore buttons still held
+  var a=dn(0)&&!mnav.pa&&!stale,bk=dn(1)&&!mnav.pb&&!stale;mnav.pa=dn(0);mnav.pb=dn(1);
+  var ax=g.axes[0]||0,ay=g.axes[1]||0,dx=0,dy=0,mv=false,d;
+  if(dn(14))ax=-1;if(dn(15))ax=1;if(dn(12))ay=-1;if(dn(13))ay=1;
+  if(Math.abs(ax)>0.55||Math.abs(ay)>0.55){if(Math.abs(ax)>Math.abs(ay))dx=ax>0?1:-1;else dy=ay>0?1:-1;}
+  if(!dx&&!dy)mnav.dir='';
+  else{d=dx+','+dy;if(d!==mnav.dir){mnav.dir=d;mnav.t=now+380;mv=!stale;}else if(now>=mnav.t){mnav.t=now+140;mv=true;}}
+  if(padCap||layEdit||$('boot').style.display==='flex')return;
+  if(titleOn){if(a)closeTitle();return;}
+  if(mv)navMove(dx,dy);
+  if(a){var c=navCands(),el=navCur(c)||navDefault(c);if(el){navSet(el);el.click();}}
+  else if(bk)navBack();
+}
+window.addEventListener('pointerdown',function(){if(mnav.cur){mnav.cur.classList.remove('padf');mnav.cur=null;}},true);
 function update(dt){
   if(paused){
+    padMenu();if(!paused)return;
     var pr=pollPad(),again=inp.pauseP||pr;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=inp.pauseP=false;inp.shoot=false;
     if(again&&!inPauseSet&&!layEdit)setPause(false);
     return;
@@ -1750,6 +1820,7 @@ function update(dt){
   if(game.state==='menu'||game.state==='over'){
     var pst=pollPad();inp.pauseP=false;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;inp.shoot=false;
     if(pst&&titleOn){closeTitle();return;}
+    padMenu();if(game.state!=='menu'&&game.state!=='over')return;
     if(pst&&!layEdit&&!net.on&&!net.searching&&(game.state==='over'||sheetOpen==='')){begin();return;}
     if(game.state==='menu'){
       var port=window.innerWidth<window.innerHeight,so=sheetOpen==='baller',la=Math.sin(game.time*0.5)*(so?0.15:0.45),ld=port?(so?5.2:4.0):3.1,lk=Math.min(1,dt*4),th=Math.tan(camera.fov*PI/360);
