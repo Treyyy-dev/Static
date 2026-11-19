@@ -18,6 +18,7 @@ To host it, turn on GitHub Pages for this repository (Settings → Pages → dep
 - Five dribble slots (stick forward, left, right, back, no stick), a separate dunk button, sprint and stamina
 - Touch, keyboard and mouse, and controller support with rebindable controls and Xbox or PlayStation button names
 - Frame-rate and quality settings, and a pause menu
+- An update check on start: when a new build has been pushed, the game downloads it and reloads before loading in
 
 Progress (coins, characters, moves and settings) is saved in the browser on the device you play on.
 
