@@ -187,6 +187,7 @@ body.layedit #stam{display:none}
 .thead h1{margin:0;font-family:var(--display);font-size:clamp(56px,17vw,180px);line-height:.9;color:var(--paper);-webkit-text-stroke:3px var(--ink);
   text-shadow:7px 7px 0 var(--ink),11px 11px 0 var(--hot)}
 .thead p{margin:6px 0 0;font-size:clamp(15px,2.6vw,24px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--paper);text-shadow:2px 2px 0 var(--ink)}
+#tPad{position:absolute;left:0;right:0;bottom:.6%;margin:0;z-index:7;text-align:center;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--paper);text-shadow:2px 2px 0 var(--ink);pointer-events:none}
 #tStart{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:7;white-space:nowrap}
 #boot{position:fixed;inset:0;z-index:19;display:none;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(circle at 2px 2px,rgba(255,246,227,.08) 1.6px,transparent 2.2px) 0 0/16px 16px,var(--ink)}
@@ -214,6 +215,7 @@ body.hubwalk #hubSet{display:block;position:absolute;right:12px;top:58px;pointer
 body.hub:not(.hubwalk) #hubBack{display:block}
 body.hub:not(.hubwalk) #setup{left:50%;bottom:50%;transform:translate(-50%,50%);width:min(300px,80vw)}
 body.hub:not(.hubwalk) #play{right:50%;bottom:12%;transform:translateX(50%)}
+.padfocus{outline:4px solid var(--paper)!important;outline-offset:3px;box-shadow:0 0 0 8px var(--hot)!important}
 .touch #stickzone{display:block}.touch .btn{display:flex}.touch #keys{display:none}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   background:rgba(20,18,28,.82);text-align:center;padding:20px;pointer-events:auto}
@@ -285,7 +287,7 @@ body.pauseset #settings{padding-top:0}
 <div id="pullRes"><h2 id="resT">You pulled</h2><div id="resGrid"></div><button class="go" id="resOk">OK</button></div>
 <div id="layBar"><span>Drag the buttons where you want them</span><button class="chip" id="layReset">Reset</button><button class="chip" id="layDone">Done</button></div>
 <div class="ov" id="over"><h1 id="oT">GAME</h1><p id="oS"></p><div class="row"><button class="go" id="again">Run it back</button><button class="go" id="toLobby" style="background:var(--ink);color:var(--paper)">Lobby</button></div></div>
-<div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1><p>Street ball, anime rules</p></div><button class="go" id="tStart">Tap to start</button></div>
+<div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1><p>Street ball, anime rules</p></div><button class="go" id="tStart">Tap to start</button><p id="tPad">On a controller, press any button</p></div>
 <div id="boot" role="status"><div class="bootbox"><h2 id="bootT">Checking for updates</h2><p id="bootS"></p><div class="bootbar"><b id="bootBar"></b></div></div></div>
 <div class="ov" id="pause"><h1>PAUSED</h1><button class="go" id="pResume">Resume</button><button class="go" id="pSettings" style="background:var(--home);color:var(--ink)">Settings</button><button class="go" id="pQuit" style="background:var(--ink);color:var(--paper)">Quit to lobby</button></div>
 <div class="ov" id="err"><h1>Can't load</h1><p>The 3D engine did not load. Check your connection and reopen the page.</p></div>
@@ -824,9 +826,63 @@ canvas.addEventListener('pointerdown',function(e){
   if(e.pointerType==='mouse'&&e.button===0&&save.set.ctl==='kbm'&&game.state==='play'){mouseShoot=true;inp.shoot=true;inp.shootP=true;}
 });
 window.addEventListener('pointerup',function(){if(mouseShoot){mouseShoot=false;inp.shoot=false;inp.shootR=true;}});
-function getPad(){try{var g=navigator.getGamepads?navigator.getGamepads():[];for(var i=0;i<g.length;i++)if(g[i]&&g[i].connected)return g[i];}catch(e){}return null;}
+var padBlocked=false,padIdx=-1;
+function getPad(){ // the controller in use: the last one that was touched, skipping devices that are not real gamepads
+  var g;try{g=navigator.getGamepads?navigator.getGamepads():null;}catch(e){padBlocked=true;return null;}
+  if(!g)return null;var best=null,i,p,k,act;
+  for(i=0;i<g.length;i++){
+    p=g[i];if(!p||p.connected===false||!p.buttons||p.buttons.length<4||!p.axes)continue;
+    act=false;for(k=0;k<p.buttons.length;k++)if(p.buttons[k]&&p.buttons[k].pressed){act=true;break;}
+    if(!act)for(k=0;k<Math.min(4,p.axes.length);k++)if(Math.abs(p.axes[k])>0.5){act=true;break;}
+    if(act)padIdx=i;if(!best||i===padIdx)best=p;
+  }
+  return best;
+}
+/* controller navigation for menus: D-pad or stick moves between buttons, button 0 picks, button 1 goes back */
+var uiPrev={a:false,b:false,dir:''},uiHold=0,uiFocus=null;
+function uiLayer(){
+  if(titleOn||hub.bootOn||layEdit||keyCap||padCap)return null;
+  if($('pullRes').style.display==='flex')return $('pullRes');
+  if(paused&&!inPauseSet)return $('pause');
+  if(game.state==='over')return $('over');
+  if(inPauseSet||(game.state==='menu'&&!hub.walk))return $('lobby');
+  return null;
+}
+function uiSet(el){if(uiFocus&&uiFocus.classList)uiFocus.classList.remove('padfocus');uiFocus=el;if(el){el.classList.add('padfocus');try{el.scrollIntoView({block:'nearest'});}catch(e){}}}
+function uiNav(dt){
+  var out={a:false,b:false,fresh:false},g=getPad(),root=uiLayer();
+  if(!g){if(uiFocus)uiSet(null);return out;}
+  function dn(n){return !!(g.buttons[n]&&g.buttons[n].pressed);}
+  var ax=g.axes[0]||0,ay=g.axes[1]||0,dir=dn(12)||ay<-0.6?'u':dn(13)||ay>0.6?'d':dn(14)||ax<-0.6?'l':dn(15)||ax>0.6?'r':'';
+  var a=dn(0),b=dn(1),step=false,ea=a&&!uiPrev.a,eb=b&&!uiPrev.b;
+  if(dir&&dir!==uiPrev.dir){step=true;uiHold=0.38;}else if(dir){uiHold-=dt;if(uiHold<=0){step=true;uiHold=0.13;}}
+  uiPrev.a=a;uiPrev.b=b;uiPrev.dir=dir;
+  if(!root){if(uiFocus)uiSet(null);return out;}
+  out.a=ea;out.b=eb;
+  if(!root.querySelectorAll){out.fresh=true;return out;}
+  try{
+    var all=root.querySelectorAll('button'),list=[],i;
+    for(i=0;i<all.length;i++){var r=all[i].getBoundingClientRect();if(r.width>2&&r.height>2&&all[i].offsetParent!==null)list.push({el:all[i],x:r.left+r.width/2,y:r.top+r.height/2});}
+    if(!list.length)return out;
+    var cur=null;for(i=0;i<list.length;i++)if(list[i].el===uiFocus)cur=list[i];
+    if(!cur){
+      if(step||ea){var go=root.querySelector('.go');uiSet(go&&go.offsetParent!==null?go:list[0].el);out.fresh=true;}
+      return out;
+    }
+    if(step){
+      var best=null,bs=1e9;
+      for(i=0;i<list.length;i++){var c=list[i];if(c===cur)continue;var dx=c.x-cur.x,dy=c.y-cur.y,pri=dir==='u'?-dy:dir==='d'?dy:dir==='l'?-dx:dx,sec=(dir==='u'||dir==='d')?Math.abs(dx):Math.abs(dy);
+        if(pri<6)continue;var sc=pri+sec*2.2;if(sc<bs){bs=sc;best=c;}}
+      if(best)uiSet(best.el);
+    }
+    if(ea&&uiFocus){uiFocus.click();out.a=false;}
+  }catch(e){}
+  return out;
+}
+var padStartEdge=false;
+function inp0Start(){var s=padStartEdge;padStartEdge=false;return s;}
 function pollPad(){
-  var g=getPad();inp.px=inp.py=0;if(!g){inp.padSprint=false;return false;}
+  var g=getPad();inp.px=inp.py=0;padStartEdge=false;if(!g){inp.padSprint=false;return false;}
   var b=g.buttons,i,start=false;function dn(n){return !!(b[n]&&b[n].pressed);}
   var ax=g.axes[0]||0,ay=g.axes[1]||0;if(Math.hypot(ax,ay)<0.22){ax=0;ay=0;}
   if(dn(14))ax=-1;if(dn(15))ax=1;if(dn(12))ay=-1;if(dn(13))ay=1;
@@ -841,7 +897,7 @@ function pollPad(){
     var rsx=g.axes[2]||0,rsy=g.axes[3]||0,rsm=Math.hypot(rsx,rsy);
     if(rsm>0.65&&!padPrev.rs){padPrev.rs=true;inp.dribSlot=Math.abs(rsx)>Math.abs(rsy)?(rsx>0?'r':'l'):(rsy<0?'f':'b');inp.moveP=true;}else if(rsm<0.35)padPrev.rs=false;
     if(c.dunk&&!padPrev.dunk)inp.dunkP=true;
-    if(dn(9)&&!padPrev.b9){start=true;inp.pauseP=true;}
+    if(dn(9)&&!padPrev.b9){start=true;inp.pauseP=true;padStartEdge=true;}
   }
   padPrev.shoot=c.shoot;padPrev.pass=c.pass;padPrev.move=c.move;padPrev.dunk=c.dunk;inp.padSprint=dn(P.sprint);for(i=0;i<b.length;i++)padPrev['b'+i]=dn(i);
   return start;
@@ -1451,8 +1507,10 @@ function pauseBack(){inPauseSet=false;document.body.classList.remove('pauseset')
 function pauseQuit(){paused=false;inPauseSet=false;document.body.classList.remove('pauseset');$('pause').style.display='none';clearInput();showLobby();}
 function update(dt){
   if(paused){
-    var pr=pollPad(),again=inp.pauseP||pr;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=inp.pauseP=false;inp.shoot=false;
-    if(again&&!inPauseSet&&!layEdit)setPause(false);
+    pollPad();var again=inp.pauseP,un=uiNav(dt);inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=inp.pauseP=false;inp.shoot=false;
+    if(layEdit)return;
+    if(inPauseSet){if(un.b)pauseBack();}
+    else if(again||un.b||(un.a&&un.fresh))setPause(false);
     return;
   }
   game.time+=dt;
@@ -1461,9 +1519,13 @@ function update(dt){
   if(game.state==='menu'||game.state==='over'){
     var pst=pollPad();inp.pauseP=false;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;inp.shoot=false;
     if(pst&&titleOn){closeTitle();return;}
-    if(pst&&!layEdit){
-      if(game.state==='over'){begin();return;}
-      if(hub.walk){hubAct();}else if(hub.panel==='match'){begin();return;}
+    var un2=uiNav(dt);
+    if(!layEdit&&!titleOn){
+      if(game.state==='over'){if(inp0Start()||(un2.a&&un2.fresh)){begin();return;}if(un2.b){showLobby();return;}}
+      else if(hub.walk){if(pst)hubAct();}
+      else if($('pullRes').style.display==='flex'){if(un2.b)$('resOk').click();}
+      else if(un2.b)hubBack();
+      else if(hub.panel==='match'&&(inp0Start()||(un2.a&&un2.fresh))){begin();return;}
     }
     if(game.state==='menu'){readStick(true);hubUpdate(dt);return;}
     camYaw+=dt*0.12;var r=17;camera.position.set(Math.sin(camYaw)*r*0.5,6.5,Math.cos(camYaw)*r);camera.lookAt(0,1.5,0);
@@ -1952,6 +2014,7 @@ function hubUpdate(dt){
   var lbl=hub.near?hub.near.label:'';
   if(lbl!==hub.lastLbl){hub.lastLbl=lbl;$('hubAct').textContent=lbl;$('hubAct').style.display=lbl?'block':'none';}
   var loc=hub.zone==='home'?'Your place':'Downtown';if(loc!==hub.lastLoc){hub.lastLoc=loc;$('hubLoc').textContent=loc;}
+  var tip=(save.set.ctl!=='mobile'&&!getPad())?'Walk to a glowing ring. Using a controller? Press any button on it once to wake it up.':'Walk to a glowing ring';if(tip!==hub.lastTip){hub.lastTip=tip;$('hubTip').textContent=tip;}
   if(hub.zone==='city'||hub.t<0.2){for(i=0;i<hub.cars.length;i++)carStep(hub.cars[i],dt);}
   for(i=0;i<hub.npcs.length;i++)npcStep(hub.npcs[i],dt);
   if(hub.spout){var w=1+0.25*Math.sin(hub.t*7);hub.spout.scale.set(w,1.2+0.5*Math.sin(hub.t*5),w);}
@@ -2139,7 +2202,7 @@ function renderSettings(){
     h+='<div class="row"><button class="chip" id="bindReset">Reset key binds</button></div>';
   }else if(S.ctl==='pad'){
     var g=getPad();
-    h+='<h2>Controller binds</h2><p class="note">'+(g?'Connected: '+String(g.id).replace(/[<>&]/g,'').slice(0,40):'No controller found yet. Plug one in or pair it, then press any button on it.')+' The left stick or D-pad moves. Flick the right stick to dribble in that direction. '+padName(9)+' or your shoot button starts a game.</p>';
+    h+='<h2>Controller binds</h2>'+(padBlocked?'<p class="note" style="color:var(--hot);opacity:1">This page is not allowed to read controllers where it is open right now. Open the game from its own web address to use one.</p>':'')+'<p class="note">In menus the D-pad or stick moves between buttons, '+padName(0)+' picks and '+padName(1)+' goes back. </p><p class="note">'+(g?'Connected: '+String(g.id).replace(/[<>&]/g,'').slice(0,40):'No controller found yet. Browsers only show a controller to a game after you press a button on it, and moving a stick does not count. Press any button once.')+' The left stick or D-pad moves. Flick the right stick to dribble in that direction. '+padName(9)+' or your shoot button starts a game.</p>';
     h+='<h2>Button names</h2>'+chips('ps_',PSO,S.padStyle)+'<p class="note">Auto shows PlayStation names when it sees a PlayStation controller. Showing '+(padStyle()==='ps'?'PlayStation':'Xbox')+' names now.</p>';
     PADROWS.forEach(function(r){h+='<div class="bindrow"><span>'+r[1]+'</span><button class="chip" id="pb_'+r[0]+'" aria-pressed="'+(padCap===r[0]?'true':'false')+'">'+(padCap===r[0]?'Press a button':padName(S.pad[r[0]]))+'</button></div>';});
     h+='<div class="row"><button class="chip" id="bindReset">Reset controller binds</button></div>';
@@ -2164,7 +2227,8 @@ function renderSettings(){
     $('bindReset').addEventListener('click',function(){S.lay={size:1,hand:'r',pos:{}};persist();applyControls();renderSettings();toast('Layout reset');});
   }
 }
-window.addEventListener('gamepadconnected',function(){applyControls();if(sheetOpen==='settings')renderSettings();});
+window.addEventListener('gamepadconnected',function(){applyControls();if(sheetOpen==='settings')renderSettings();try{toast('Controller connected');}catch(e){}});
+document.addEventListener('pointerdown',function(){try{window.focus();}catch(e){}},true);
 function persist(){try{localStorage.setItem('blacktop3v3_v2',JSON.stringify(save));}catch(e){}}
 function rebuildUser(){
   var L=BYID[save.eq.char]||CHARS[0],b=buildHuman(L,L.j,L.s,L.nc);
