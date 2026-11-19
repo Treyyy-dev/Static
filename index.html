@@ -8,6 +8,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="Static">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@500;700&display=swap">
 <style>
 :root{
@@ -25,6 +26,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:var(--ink);color:var(--paper);font-family:var(--body);overflow:hidden;
   -webkit-user-select:none;user-select:none;touch-action:none}
+#root{position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden}
+body.rot #root{transform-origin:0 0;transform:rotate(90deg) translateY(-100%)}
 #c{position:fixed;inset:0;width:100%;height:100%;display:block}
 #hud{position:fixed;inset:0;pointer-events:none}
 #score{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;
@@ -37,7 +40,7 @@ html,body{height:100%;margin:0;background:var(--ink);color:var(--paper);font-fam
 #clk.low{color:var(--hot)}
 #role{position:absolute;top:58px;left:50%;transform:translateX(-50%);font-weight:700;font-size:14px;letter-spacing:.14em;
   background:var(--ink);padding:2px 10px;border-radius:6px;opacity:.85}
-#banner{position:absolute;top:26%;left:0;right:0;text-align:center;font-family:var(--display);font-size:clamp(26px,7vw,60px);
+#banner{position:absolute;top:26%;left:0;right:0;text-align:center;font-family:var(--display);font-size:clamp(26px,calc(var(--vw)*7),60px);
   color:var(--paper);-webkit-text-stroke:2px var(--ink);text-shadow:4px 4px 0 var(--ink);opacity:0;transform:scale(.8);
   transition:opacity .15s,transform .15s}
 #banner.on{opacity:1;transform:scale(1)}
@@ -61,7 +64,7 @@ html,body{height:100%;margin:0;background:var(--ink);color:var(--paper);font-fam
 body.lobby #hud{display:none}
 #lobby{position:fixed;inset:0;pointer-events:none}
 #lobby>*{pointer-events:auto}
-#brand{position:absolute;left:14px;top:14px;font-family:var(--display);font-size:clamp(15px,2.6vw,24px);color:var(--home);text-shadow:2px 2px 0 var(--hot)}
+#brand{position:absolute;left:14px;top:14px;font-family:var(--display);font-size:clamp(15px,calc(var(--vw)*2.6),24px);color:var(--home);text-shadow:2px 2px 0 var(--hot)}
 #nav{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;background:rgba(20,18,28,.88);padding:5px;border-radius:12px;border:3px solid var(--ink)}
 .tab{font-family:var(--display);font-size:13px;padding:8px 12px;border-radius:8px;border:0;background:#2a2738;color:var(--paper);cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap}
 .tab[aria-pressed="true"]{background:var(--home);color:var(--ink)}
@@ -69,7 +72,7 @@ body.lobby #hud{display:none}
 .tab:focus-visible,.done:focus-visible{outline:3px solid var(--paper);outline-offset:2px}
 #toast{position:absolute;top:100px;z-index:5;left:50%;transform:translateX(-50%);background:var(--ink);border:2px solid var(--home);padding:5px 12px;border-radius:8px;font-weight:700;font-size:15px;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap}
 #toast.on{opacity:1}
-#setup{position:absolute;left:12px;bottom:12px;width:min(250px,56vw);max-height:70%;overflow-y:auto;touch-action:pan-y;background:rgba(20,18,28,.88);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+#setup{position:absolute;left:12px;bottom:12px;width:min(250px,calc(var(--vw)*56));max-height:70%;overflow-y:auto;touch-action:pan-y;background:rgba(20,18,28,.88);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
 #setup h2,.sheet h2{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin:2px 0 0;opacity:.75}
 #setup summary{font-weight:700;font-size:14px;cursor:pointer}
 #setup p{margin:0}
@@ -87,10 +90,10 @@ body.lobby #hud{display:none}
 .dot[aria-pressed="true"]{border-color:var(--paper);box-shadow:0 0 0 3px var(--home)}
 .item:focus-visible,.dot:focus-visible{outline:3px solid var(--paper);outline-offset:2px}
 #coins{position:absolute;right:12px;top:14px;font-family:var(--display);font-size:14px;background:var(--home);color:var(--ink);border:3px solid var(--ink);border-radius:10px;padding:5px 10px}
-@media (orientation:portrait){#baller,#shop{align-items:flex-end}.sheet{width:100%;max-height:58%}}
-@media (max-width:640px){#coins{top:62px}}
+
+body.narrow #coins{top:62px}
 .done{font-family:var(--display);font-size:13px;padding:6px 14px;border-radius:8px;border:0;background:var(--home);color:var(--ink);cursor:pointer}
-@media (max-width:640px){#brand{display:none}}
+body.narrow #brand{display:none}
 .row{display:flex;gap:8px}
 .card,.chip{flex:1;min-width:0;font-family:var(--body);color:var(--paper);background:#2a2738;border:3px solid transparent;border-radius:10px;padding:7px 8px;cursor:pointer;text-align:left}
 .chip{text-align:center;font-weight:700;font-size:17px}
@@ -108,7 +111,7 @@ body.lobby #hud{display:none}
 #baller{padding:58px 0 0;z-index:3;background:linear-gradient(var(--ink) 58px,transparent 58px)}
 #shopSheet{width:100%;height:100%;max-height:none;border:0;border-radius:0;padding:8px 16px 12px;background:var(--ink)}
 #ballerSheet{width:60%;height:100%;max-height:none;border:0;border-left:4px solid var(--home);border-radius:0;padding:10px 14px 12px;background:var(--ink)}
-.sheet .shead h2{font-family:var(--display);font-size:clamp(17px,3.2vw,26px);letter-spacing:0;text-transform:none;opacity:1;color:var(--home);margin:0}
+.sheet .shead h2{font-family:var(--display);font-size:clamp(17px,calc(var(--vw)*3.2),26px);letter-spacing:0;text-transform:none;opacity:1;color:var(--home);margin:0}
 .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));grid-auto-rows:132px;gap:8px}
 .sinfo{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:15px;font-weight:700}
 .sinfo b{color:var(--home)}
@@ -122,8 +125,8 @@ body.lobby #hud{display:none}
 .sitem span{font-family:var(--display);font-size:13px;color:var(--home)}
 .sitem.own{opacity:.6}.sitem.own span{color:var(--good)}
 .sitem:focus-visible{outline:3px solid var(--paper);outline-offset:2px}
-@media (orientation:portrait){.shopgrid{grid-template-columns:repeat(2,minmax(0,1fr))}#baller{align-items:flex-end}#ballerSheet{width:100%;height:60%;border-left:0;border-top:4px solid var(--home)}}
-@media (max-width:640px){.tab{font-size:11px;padding:7px 8px}}
+
+body.narrow .tab{font-size:11px;padding:7px 8px}
 #settings{position:absolute;inset:0;display:none;justify-content:center;padding:58px 0 0;pointer-events:auto;background:var(--ink);z-index:3}
 #setSheet{width:min(720px,100%);height:100%;max-height:none;border:0;border-radius:0;padding:8px 16px 20px;background:var(--ink)}
 .bindrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:17px;font-weight:500}
@@ -144,7 +147,7 @@ body.layedit .btn{display:flex;touch-action:none}
   background:linear-gradient(120deg,var(--b1),var(--b2))}
 .banner img{flex:0 0 38%;min-width:0;max-height:100%;object-fit:contain;align-self:center;border-radius:10px;background:rgba(20,18,28,.35)}
 .binfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;justify-content:center}
-.binfo h3{font-family:var(--display);font-size:clamp(20px,4vw,34px);margin:0;line-height:1;text-shadow:3px 3px 0 var(--ink)}
+.binfo h3{font-family:var(--display);font-size:clamp(20px,calc(var(--vw)*4),34px);margin:0;line-height:1;text-shadow:3px 3px 0 var(--ink)}
 .binfo p{margin:0;font-size:15px;line-height:1.3}
 .binfo .go{flex:1;font-size:16px;padding:10px 6px}
 .feat{font-size:14px;font-weight:700;line-height:1.4;background:rgba(20,18,28,.55);border-radius:8px;padding:6px 8px}
@@ -155,7 +158,7 @@ body.layedit .btn{display:flex;touch-action:none}
 #resGrid.one{grid-template-columns:minmax(0,200px);justify-content:center}#resGrid.one .sitem{height:230px}
 @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){#resGrid .sitem{animation:none}}
-@media (orientation:portrait){.banner{flex-direction:column}.banner img{flex:0 0 34%;width:100%}#resGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 #bDunk{background:var(--away);color:var(--paper)}
 .btn.off{opacity:.3}
 .banner{flex:0 0 auto;min-height:190px}
@@ -176,7 +179,7 @@ body.layedit #stam{display:none}
 .tbg{position:absolute;inset:-6%;background:radial-gradient(circle at 2px 2px,rgba(255,246,227,.2) 1.6px,transparent 2.2px) 0 0/16px 16px,
   linear-gradient(115deg,#ffb703 0 36%,#ff4d3d 36% 63%,#8f5bff 63% 100%);transform:translate(calc(var(--mx)*-8px),calc(var(--my)*-6px))}
 .tword{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%) translate(calc(var(--mx)*-18px),calc(var(--my)*-10px));font-family:var(--display);
-  font-size:min(56vw,88vh);line-height:.8;white-space:nowrap;color:rgba(20,18,28,.17)}
+  font-size:min(calc(var(--vw)*56),calc(var(--vh)*88));line-height:.8;white-space:nowrap;color:rgba(20,18,28,.17)}
 #tcast{position:absolute;inset:0}
 #tcast img{position:absolute;bottom:-2%;aspect-ratio:1;max-width:none;filter:drop-shadow(9px 10px 0 rgba(20,18,28,.5));
   transform:translateX(-50%) translate(calc(var(--mx)*var(--d)),calc(var(--my)*var(--d)*.5));animation:tfloat 5s ease-in-out infinite}
@@ -184,23 +187,21 @@ body.layedit #stam{display:none}
 @keyframes tfloat{50%{translate:0 -9px}}
 @media (prefers-reduced-motion:reduce){#tcast img{animation:none}}
 .thead{position:absolute;left:0;right:0;bottom:15%;z-index:6;text-align:center;pointer-events:none;transform:translate(calc(var(--mx)*14px),calc(var(--my)*8px))}
-.thead h1{margin:0;font-family:var(--display);font-size:clamp(56px,17vw,180px);line-height:.9;color:var(--paper);-webkit-text-stroke:3px var(--ink);
+.thead h1{margin:0;font-family:var(--display);font-size:clamp(56px,calc(var(--vw)*17),180px);line-height:.9;color:var(--paper);-webkit-text-stroke:3px var(--ink);
   text-shadow:7px 7px 0 var(--ink),11px 11px 0 var(--hot)}
-.thead p{margin:6px 0 0;font-size:clamp(15px,2.6vw,24px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--paper);text-shadow:2px 2px 0 var(--ink)}
+.thead p{margin:6px 0 0;font-size:clamp(15px,calc(var(--vw)*2.6),24px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--paper);text-shadow:2px 2px 0 var(--ink)}
 #tStart{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:7;white-space:nowrap}
 #boot{position:fixed;inset:0;z-index:19;display:none;align-items:center;justify-content:center;padding:24px;
   background:radial-gradient(circle at 2px 2px,rgba(255,246,227,.08) 1.6px,transparent 2.2px) 0 0/16px 16px,var(--ink)}
 .bootbox{width:min(460px,100%);display:flex;flex-direction:column;gap:10px;text-align:center}
-#bootT{margin:0;font-family:var(--display);font-size:clamp(22px,5vw,34px);line-height:1.1;color:var(--home);text-shadow:3px 3px 0 var(--hot);text-wrap:balance}
+#bootT{margin:0;font-family:var(--display);font-size:clamp(22px,calc(var(--vw)*5),34px);line-height:1.1;color:var(--home);text-shadow:3px 3px 0 var(--hot);text-wrap:balance}
 #bootS{margin:0;font-size:17px;font-weight:500;min-height:1.3em}
 .bootbar{height:16px;border:3px solid var(--paper);border-radius:10px;overflow:hidden;background:#2a2738}
 #bootBar{display:block;height:100%;width:0;background:var(--good);transition:width .25s linear}
 @media (prefers-reduced-motion:reduce){#bootBar{transition:none}}
-#padHelp{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:2;display:none;align-items:center;gap:8px;width:min(560px,calc(100% - 24px));background:rgba(20,18,28,.9);border:2px solid var(--home);border-radius:10px;padding:6px 10px;font-size:14px;font-weight:500;line-height:1.25}
-#padHelp .chip{flex:0 0 auto;padding:5px 10px;font-size:14px}
 #modes{display:none;z-index:7}
-#modes .row{display:flex;gap:10px;width:min(440px,88vw)}
-#modes .card{text-align:center;padding:12px 10px;width:min(440px,88vw);flex:0 0 auto}
+#modes .row{display:flex;gap:10px;width:min(440px,calc(var(--vw)*88))}
+#modes .card{text-align:center;padding:12px 10px;width:min(440px,calc(var(--vw)*88));flex:0 0 auto}
 #modes .card b{display:block;font-family:var(--display);font-size:30px;color:var(--home);line-height:1.05}
 #modes .go{min-width:200px}
 #mm{display:none;z-index:8}
@@ -208,7 +209,7 @@ body.layedit #stam{display:none}
 .touch #stickzone{display:block}.touch .btn{display:flex}.touch #keys{display:none}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   background:rgba(20,18,28,.82);text-align:center;padding:20px;pointer-events:auto}
-.ov h1{font-family:var(--display);font-size:clamp(34px,9vw,84px);margin:0;line-height:1;color:var(--home);
+.ov h1{font-family:var(--display);font-size:clamp(34px,calc(var(--vw)*9),84px);margin:0;line-height:1;color:var(--home);
   text-shadow:5px 5px 0 var(--hot);text-wrap:balance}
 .ov p{margin:0;font-size:19px;max-width:34em;line-height:1.35}
 .ov ul{margin:0;padding:0;list-style:none;font-size:18px;line-height:1.5}
@@ -229,6 +230,7 @@ body.pauseset #settings{padding-top:0}
 </style>
 </head>
 <body class="lobby">
+<div id="root">
 <canvas id="c"></canvas>
 <div id="hud">
   <div id="score"><div id="sh"><small id="sLblH">YOU</small><span id="sH">0</span></div><div id="clk">24</div><div id="sa"><span id="sA">0</span><small id="sLblA">CPU</small></div></div>
@@ -254,10 +256,7 @@ body.pauseset #settings{padding-top:0}
   </nav>
   <div id="coins"></div>
   <div id="toast" role="status"></div>
-  <div id="padHelp"><span>Controller not responding? Press a button on it. If nothing happens, turn the controller off and on while this is open, or</span><button class="chip" id="padFind">look again</button></div>
   <div id="setup">
-    <h2>CPU squad</h2>
-    <div class="row"><button class="chip" id="diff0">Rookie</button><button class="chip" id="diff1">Pro</button><button class="chip" id="diff2">Legend</button></div>
     <details><summary>Controls</summary><ul class="how">
       <li><b>Shoot</b> hold, let go in the green. Dunk near the rim. (Space)</li>
       <li><b>Pass</b> aim with the stick. Off the ball it calls for a pass. (F)</li>
@@ -285,6 +284,7 @@ body.pauseset #settings{padding-top:0}
 <div class="ov" id="mm"><h1>FINDING A MATCH</h1><p id="mmS" role="status">Connecting</p><p style="font-size:15px;opacity:.8">Up to 3 on 3. You control one baller. Empty spots are played by the CPU.</p><button class="go" id="mmStart" style="display:none">Start now</button><button class="go" id="mmCancel" style="background:var(--ink);color:var(--paper)">Cancel</button></div>
 <div class="ov" id="err"><h1>Can't load</h1><p>The 3D engine did not load. Check your connection and reopen the page.</p></div>
 
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function(){
@@ -303,12 +303,37 @@ var renderer=new T.WebGLRenderer({canvas:canvas,antialias:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
 var scene=new T.Scene();
 var camera=new T.PerspectiveCamera(62,1,0.1,400);
-function resize(){
-  var w=window.innerWidth,h=window.innerHeight;
-  renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<h?82:62;camera.updateProjectionMatrix();
-  $('rot').textContent=(w<h&&isTouch)?'Tip: turn your phone sideways for a wider view.':'';
+/* The game is always wide. A phone or tablet held upright gets the whole game turned on its side, so it still fills the screen. */
+var isTouch=('ontouchstart' in window)||(navigator.maxTouchPoints>0),ROT=false;
+function coarse(){try{return isTouch&&window.matchMedia&&window.matchMedia('(pointer:coarse)').matches;}catch(e){return isTouch;}}
+function VW(){return ROT?window.innerHeight:window.innerWidth;}
+function VH(){return ROT?window.innerWidth:window.innerHeight;}
+function PX(e){return ROT?e.clientY:e.clientX;}
+function PY(e){return ROT?window.innerWidth-e.clientX:e.clientY;}
+function LR(el){var r=el.getBoundingClientRect();if(!ROT)return r;var W=window.innerWidth;return {left:r.top,top:W-r.right,right:r.bottom,bottom:W-r.left,width:r.height,height:r.width};}
+function fsEl(){return document.fullscreenElement||document.webkitFullscreenElement||null;}
+function fsOn(){return !!fsEl();}
+function fsCan(){var d=document.documentElement;return !!(d.requestFullscreen||d.webkitRequestFullscreen);}
+function fsExit(){try{(document.exitFullscreen||document.webkitExitFullscreen).call(document);}catch(e){}}
+function goFull(){ // must be called from a tap or a button press
+  var d=document.documentElement,p;
+  try{if(!fsOn()){if(d.requestFullscreen)p=d.requestFullscreen({navigationUI:'hide'});else if(d.webkitRequestFullscreen)d.webkitRequestFullscreen();}}catch(e){}
+  function lock(){try{var o=screen.orientation;if(o&&o.lock){var q=o.lock('landscape');if(q&&q.catch)q.catch(function(){});}}catch(e){}}
+  if(p&&p.then)p.then(lock,function(){});else setTimeout(lock,300);
 }
-var isTouch=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
+function resize(){
+  var iw=window.innerWidth,ih=window.innerHeight,r=$('root');
+  ROT=ih>iw&&coarse();document.body.classList[ROT?'add':'remove']('rot');
+  r.style.width=ROT?ih+'px':'';r.style.height=ROT?iw+'px':'';
+  var w=VW(),h=VH();
+  document.body.classList[w<=640?'add':'remove']('narrow');
+  document.documentElement.style.setProperty('--vw',w/100+'px');document.documentElement.style.setProperty('--vh',h/100+'px');
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<h?82:62;camera.updateProjectionMatrix();
+  $('rot').textContent='';
+}
+window.addEventListener('orientationchange',function(){setTimeout(resize,250);});
+document.addEventListener('fullscreenchange',function(){setTimeout(resize,150);});
+(function(){function once(){document.removeEventListener('pointerup',once,true);goFull();}document.addEventListener('pointerup',once,true);})();   // the first tap fills the screen
 if(isTouch)document.body.classList.add('touch');
 window.addEventListener('resize',resize);
 
@@ -853,10 +878,10 @@ function pollPad(){
 }
 (function(){
   var z=$('stickzone'),base=$('sbase'),knob=$('sknob'),bx=0,by=0;
-  function place(el,x,y){var r=z.getBoundingClientRect();el.style.left=(x-r.left)+'px';el.style.top=(y-r.top)+'px';}
-  z.addEventListener('pointerdown',function(e){if(inp.sid!==null)return;inp.sid=e.pointerId;bx=e.clientX;by=e.clientY;
+  function place(el,x,y){var r=LR(z);el.style.left=(x-r.left)+'px';el.style.top=(y-r.top)+'px';}
+  z.addEventListener('pointerdown',function(e){if(inp.sid!==null)return;inp.sid=e.pointerId;bx=PX(e);by=PY(e);
     try{z.setPointerCapture(e.pointerId);}catch(x){}base.style.display=knob.style.display='block';place(base,bx,by);place(knob,bx,by);e.preventDefault();});
-  z.addEventListener('pointermove',function(e){if(e.pointerId!==inp.sid)return;var dx=e.clientX-bx,dy=e.clientY-by,l=Math.hypot(dx,dy),m=52;
+  z.addEventListener('pointermove',function(e){if(e.pointerId!==inp.sid)return;var dx=PX(e)-bx,dy=PY(e)-by,l=Math.hypot(dx,dy),m=52;
     if(l>m){dx*=m/l;dy*=m/l;}inp.sx=dx/m;inp.sy=-dy/m;place(knob,bx+dx,by+dy);});
   function end(e){if(e.pointerId!==inp.sid)return;inp.sid=null;inp.sx=inp.sy=0;base.style.display=knob.style.display='none';}
   z.addEventListener('pointerup',end);z.addEventListener('pointercancel',end);
@@ -873,11 +898,11 @@ function pollPad(){
     el.addEventListener('pointerdown',function(e){
       try{el.setPointerCapture(e.pointerId);}catch(x){}
       el.classList.add('dn');e.preventDefault();if(layEdit)return;
-      id=e.pointerId;sx0=e.clientX;sy0=e.clientY;fired=false;
+      id=e.pointerId;sx0=PX(e);sy0=PY(e);fired=false;
     });
     el.addEventListener('pointermove',function(e){
       if(layEdit||e.pointerId!==id)return;
-      var dx=e.clientX-sx0,dy=e.clientY-sy0,l=Math.hypot(dx,dy),m=24;
+      var dx=PX(e)-sx0,dy=PY(e)-sy0,l=Math.hypot(dx,dy),m=24;
       if(l>m)knob(dx*m/l,dy*m/l);else knob(dx,dy);
       if(!fired&&l>20){fired=true;inp.dribSlot=Math.abs(dx)>Math.abs(dy)?(dx>0?'r':'l'):(dy<0?'f':'b');inp.moveP=true;}
     });
@@ -1748,13 +1773,13 @@ function pauseQuit(){paused=false;inPauseSet=false;document.body.classList.remov
 /* ----- menus by controller: stick or d-pad moves the highlight, Cross/A selects, Circle/B goes back ----- */
 var mnav={cur:null,cx:0,cy:0,pa:true,pb:true,dir:'',t:0,seen:0};
 function navCands(){
-  var all=document.querySelectorAll('button,summary,select,[role="button"],.item,.card,.chip,.sitem,.dot'),out=[],W=window.innerWidth,H=window.innerHeight,i,el,r,cx,cy,t;
+  var all=document.querySelectorAll('button,summary,select,[role="button"],.item,.card,.chip,.sitem,.dot'),out=[],W=window.innerWidth,H=window.innerHeight,i,el,r,cx,cy,t,L;
   for(i=0;i<all.length;i++){
     el=all[i];if(el.disabled)continue;r=el.getBoundingClientRect();if(r.width<6||r.height<6)continue;
     cx=r.left+r.width/2;cy=r.top+r.height/2;
     if(cx>=0&&cx<W&&cy>=0&&cy<H){t=document.elementFromPoint(cx,cy);if(!t||!(t===el||el.contains(t)))continue;}
     else if(!el.closest||!el.closest('.sheet'))continue;      // off screen only counts inside a scrolling page
-    el._r=r;el._cx=cx;el._cy=cy;out.push(el);
+    L=LR(el);el._r=L;el._cx=L.left+L.width/2;el._cy=L.top+L.height/2;out.push(el);
   }
   return out;
 }
@@ -1762,7 +1787,7 @@ function navSet(el){
   if(mnav.cur&&mnav.cur!==el)mnav.cur.classList.remove('padf');
   mnav.cur=el;if(!el)return;el.classList.add('padf');
   try{el.scrollIntoView({block:'nearest',inline:'nearest'});}catch(e){}
-  var r=el.getBoundingClientRect();mnav.cx=r.left+r.width/2;mnav.cy=r.top+r.height/2;
+  var r=LR(el);mnav.cx=r.left+r.width/2;mnav.cy=r.top+r.height/2;
 }
 function navCur(c){ // the highlighted control, or the one now sitting where it was (menus redraw themselves)
   if(mnav.cur&&c.indexOf(mnav.cur)>=0)return mnav.cur;
@@ -1779,7 +1804,7 @@ function navDefault(c){
 function navMove(dx,dy){
   var c=navCands(),cur=navCur(c),i,o,a,b,prim,perp,best=null,bs=1e9,sc;
   if(!cur){navSet(navDefault(c));return;}
-  a=cur.getBoundingClientRect();
+  a=LR(cur);
   for(i=0;i<c.length;i++){
     o=c[i];if(o===cur||o.contains(cur)||cur.contains(o))continue;b=o._r;
     if(dx){prim=(o._cx-mnav.cx)*dx;perp=Math.max(0,b.top-a.bottom,a.top-b.bottom);}
@@ -1830,7 +1855,7 @@ function update(dt){
     padMenu();if(game.state!=='menu'&&game.state!=='over')return;
     if(pst&&!layEdit&&!net.on&&!net.searching&&(game.state==='over'||sheetOpen==='')){if(game.state==='over'){begin();return;}if(modesOpen())modeStart();else showModes();if(game.state!=='menu')return;}
     if(game.state==='menu'){
-      var port=window.innerWidth<window.innerHeight,so=sheetOpen==='baller',la=Math.sin(game.time*0.5)*(so?0.15:0.45),ld=port?(so?5.2:4.0):3.1,lk=Math.min(1,dt*4),th=Math.tan(camera.fov*PI/360);
+      var port=VW()<VH(),so=sheetOpen==='baller',la=Math.sin(game.time*0.5)*(so?0.15:0.45),ld=port?(so?5.2:4.0):3.1,lk=Math.min(1,dt*4),th=Math.tan(camera.fov*PI/360);
       camPos.x+=(user.x+Math.sin(la)*ld-camPos.x)*lk;camPos.y+=(1.5-camPos.y)*lk;camPos.z+=(user.z+Math.cos(la)*ld-camPos.z)*lk;
       look.x+=(user.x+(so&&!port?0.6*ld*th*camera.aspect:0)-look.x)*lk;look.y+=((port?(so?1.0-0.6*ld*th:0.95):1.1)-look.y)*lk;look.z+=(user.z-look.z)*lk;
       camera.position.copy(camPos);camera.lookAt(look);ringMe.position.set(user.x,0.03,user.z);ringMate.visible=ringMan.visible=false;stamG.visible=false;updateSweat(dt);
@@ -2066,7 +2091,11 @@ function renderSettings(){
     h+='<h2>Button size</h2>'+chips('sz',SZO,S.lay.size)+'<h2>Buttons on the</h2>'+chips('hand_',HO,S.lay.hand);
     h+='<h2>Layout</h2><div class="row"><button class="chip" id="layEditBtn">Move the buttons</button><button class="chip" id="bindReset">Reset layout</button></div><p class="note">The move stick appears wherever your other thumb touches. The green dribble stick is flicked, not held.</p>';
   }
+  h+='<h2>Controller not responding?</h2><p class="note">Press a button on it. If nothing happens, turn the controller off and on while the game is open, or tap Look again.</p><div class="row"><button class="chip" id="padFind">Look again</button></div>';
+  if(fsCan())h+='<h2>Screen</h2><div class="row"><button class="chip" id="fsBtn">'+(fsOn()?'Leave full screen':'Go full screen')+'</button></div>';
   $('setSheet').innerHTML=h;
+  $('padFind').addEventListener('click',function(){try{sessionStorage.setItem('static_updated','2');}catch(e){}try{location.reload();}catch(e){}});
+  if($('fsBtn'))$('fsBtn').addEventListener('click',function(){if(fsOn())fsExit();else goFull();setTimeout(renderSettings,400);});
   if(inPauseSet)$('setBack').addEventListener('click',pauseBack);
   function pick(pref,opts,fn){opts.forEach(function(o){$(pref+o[0]).addEventListener('click',function(){keyCap=padCap=null;fn(o[0]);persist();applyPrefs();renderSettings();});});}
   pick('fps',FPSO,function(v){S.fps=v;});pick('q_',QO,function(v){S.q=v;});pick('ctl_',CO,function(v){S.ctl=v;});
@@ -2083,15 +2112,11 @@ function renderSettings(){
     $('bindReset').addEventListener('click',function(){S.lay={size:1,hand:'r',pos:{}};persist();applyControls();renderSettings();toast('Layout reset');});
   }
 }
-window.addEventListener('gamepadconnected',function(){applyControls();if(sheetOpen==='settings')renderSettings();try{toast('Controller connected');$('padHelp').style.display='none';}catch(e){}});
+window.addEventListener('gamepadconnected',function(){applyControls();if(sheetOpen==='settings')renderSettings();try{toast('Controller connected');}catch(e){}});
 window.addEventListener('gamepaddisconnected',function(){if(sheetOpen==='settings')renderSettings();});
 document.addEventListener('pointerdown',function(){try{window.focus();}catch(e){}},true);
 /* Home Screen web apps on iPhone and iPad often miss a controller that Safari itself can see, so offer the known ways to wake it */
 function isWebApp(){try{return navigator.standalone===true||!!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);}catch(e){return false;}}
-setInterval(function(){
-  var el=$('padHelp');if(!el)return;
-  el.style.display=(isWebApp()&&!getPad()&&game.state==='menu'&&sheetOpen===''&&!titleOn&&$('boot').style.display!=='flex')?'flex':'none';
-},1000);
 function persist(){try{localStorage.setItem('blacktop3v3_v2',JSON.stringify(save));}catch(e){}}
 function rebuildUser(){
   var L=BYID[save.eq.char]||CHARS[0],b=buildHuman(L,L.j,L.s,L.nc);
@@ -2142,11 +2167,11 @@ function castShot(ch,kind,id,extra,ballOff,cam){
 }
 function buildTitle(){
   var CAST=[
-    ['k14','js','js3',{ry:0.6},[0.1,0.2,0.05],[0.2,1.45,6.0,1.4],20,'min(76vh,96vw)',10,1,1,6.1],
-    ['k16','tE','',{ry:-0.55},[0.02,-0.02,0.15],[0.2,1.3,5.6,1.25],80,'min(76vh,96vw)',10,1,1,5.3],
-    ['k12','dr','dr4',{ry:0.75},[0,-0.3,0.05],[0.2,1.2,5.4,1.15],30,'min(90vh,112vw)',20,2,0,4.6],
-    ['k13','dk','dk0',{ry:-0.45},[0,0.15,0.05],[0.2,1.75,7.2,1.75],71,'min(112vh,138vw)',20,2,0,5.7],
-    ['k15','tA','',{ry:0.3},[0,0.21,0],[0.2,1.35,5.8,1.3],50,'min(100vh,124vw)',32,3,0,5]
+    ['k14','js','js3',{ry:0.6},[0.1,0.2,0.05],[0.2,1.45,6.0,1.4],20,'min(calc(var(--vh)*76),calc(var(--vw)*96))',10,1,1,6.1],
+    ['k16','tE','',{ry:-0.55},[0.02,-0.02,0.15],[0.2,1.3,5.6,1.25],80,'min(calc(var(--vh)*76),calc(var(--vw)*96))',10,1,1,5.3],
+    ['k12','dr','dr4',{ry:0.75},[0,-0.3,0.05],[0.2,1.2,5.4,1.15],30,'min(calc(var(--vh)*90),calc(var(--vw)*112))',20,2,0,4.6],
+    ['k13','dk','dk0',{ry:-0.45},[0,0.15,0.05],[0.2,1.75,7.2,1.75],71,'min(calc(var(--vh)*112),calc(var(--vw)*138))',20,2,0,5.7],
+    ['k15','tA','',{ry:0.3},[0,0.21,0],[0.2,1.35,5.8,1.3],50,'min(calc(var(--vh)*100),calc(var(--vw)*124))',32,3,0,5]
   ],h='';
   CAST.forEach(function(c){
     var u=castShot(BYID[c[0]],c[1],c[2],c[3],c[4],c[5]);if(!u)return;
@@ -2154,14 +2179,13 @@ function buildTitle(){
   });
   $('tcast').innerHTML=h;
   var el=$('title');
-  el.addEventListener('pointermove',function(e){el.style.setProperty('--mx',((e.clientX/window.innerWidth-0.5)*2).toFixed(3));el.style.setProperty('--my',((e.clientY/window.innerHeight-0.5)*2).toFixed(3));});
+  el.addEventListener('pointermove',function(e){el.style.setProperty('--mx',((PX(e)/VW()-0.5)*2).toFixed(3));el.style.setProperty('--my',((PY(e)/VH()-0.5)*2).toFixed(3));});
   el.addEventListener('click',closeTitle);
   window.addEventListener('keydown',function(e){if(titleOn&&(e.code==='Enter'||e.code==='Space')){e.preventDefault();closeTitle();}});
   var upd=0;try{upd=+sessionStorage.getItem('static_updated')||0;if(upd)sessionStorage.removeItem('static_updated');}catch(e){}
   if(upd){titleOn=false;el.style.display='none';startBoot(upd);}
-  $('padFind').addEventListener('click',function(){try{sessionStorage.setItem('static_updated','2');}catch(e){}try{location.reload();}catch(e){}});
 }
-function closeTitle(){if(!titleOn)return;titleOn=false;$('title').style.display='none';startAudio();startBoot(false);}
+function closeTitle(){if(!titleOn)return;goFull();titleOn=false;$('title').style.display='none';startAudio();startBoot(false);}
 /* after the start screen: look for a newer build, download it if there is one, then load in */
 function hashStr(x){var h=5381;for(var i=0;i<x.length;i++)h=((h<<5)+h+x.charCodeAt(i))|0;return (h>>>0).toString(16);}
 function bootMsg(t,sub,pct){$('bootT').textContent=t;$('bootS').textContent=sub||'';$('bootBar').style.width=pct+'%';}
@@ -2307,12 +2331,12 @@ function modesOpen(){return $('modes').style.display==='flex';}
 function setFilter(on){
   modeOnline=!!on;save.set.onl=modeOnline?1:0;persist();
   $('fOff').setAttribute('aria-pressed',on?'false':'true');$('fOn').setAttribute('aria-pressed',on?'true':'false');
-  $('modeD').textContent=on?'Real players, up to 3 on 3. You control one baller and the CPU fills empty spots.':'You and two CPU teammates against the CPU squad you picked.';
+  $('modeD').textContent=on?'Real players, up to 3 on 3. You control one baller and the CPU fills empty spots.':'You and two CPU teammates against a CPU squad.';
 }
 function showModes(){if(net.on||net.searching)return;setFilter(!!save.set.onl);$('modes').style.display='flex';}
 function hideModes(){$('modes').style.display='none';}
 function modeStart(){hideModes();setWin(21);if(modeOnline)mmOpen();else begin();}
-function setDiff(d){DIFF=d;[0,1,2].forEach(function(v){$('diff'+v).setAttribute('aria-pressed',v===d?'true':'false');});}
+function setDiff(d){DIFF=1;}   // every CPU baller plays at Pro
 function applySettings(){
   DSTEAL=[0.6,1,1.5][DIFF];
   players.forEach(function(p){
@@ -2323,7 +2347,6 @@ function applySettings(){
 (function(){
   var lp=[[0,-2.2],[-2.4,-3.2],[2.4,-3.2]];
   LOOKS.forEach(function(t,ti){t.forEach(function(L,i){L.lx=lp[i][0];L.lz=ti===0?lp[i][1]:-lp[i][1]+3;});});
-  [0,1,2].forEach(function(i){$('diff'+i).addEventListener('click',function(){setDiff(i);});});
   $('fOff').addEventListener('click',function(){setFilter(false);});$('fOn').addEventListener('click',function(){setFilter(true);});
   $('mBack').addEventListener('click',hideModes);$('mStart').addEventListener('click',modeStart);
   $('tabHome').addEventListener('click',function(){openSheet('');});
@@ -2337,7 +2360,7 @@ function applySettings(){
     var el=$(id);
     function drag(e){
       if(!layEdit||(e.type==='pointermove'&&!el.classList.contains('dn')))return;
-      save.set.lay.pos[id]=[Math.max(0.06,Math.min(0.94,e.clientX/window.innerWidth)),Math.max(0.16,Math.min(0.92,e.clientY/window.innerHeight))];applyLayout();
+      save.set.lay.pos[id]=[Math.max(0.06,Math.min(0.94,PX(e)/VW())),Math.max(0.16,Math.min(0.92,PY(e)/VH()))];applyLayout();
     }
     el.addEventListener('pointerdown',drag);el.addEventListener('pointermove',drag);
   });
