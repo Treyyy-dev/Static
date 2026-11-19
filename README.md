@@ -13,12 +13,10 @@ To host it, turn on GitHub Pages for this repository (Settings → Pages → dep
 ## What's in it
 
 - Full-court 3v3 in a fenced city court, first to 11, 15 or 21, with three CPU levels
-- A 2.5D start screen, then a walkable hub seen from overhead: your house, and a small city outside with traffic and people
-- In the hub, the wardrobe opens Baller, the desk opens Settings, the park court finds a match and the Lucky Pull shop opens the gacha
+- A 2.5D start screen, then a lobby with Home, Baller, Gacha and Settings tabs
 - Gacha with five banners: 17 anime-style characters, plus jump shots, dribbles and dunks to pull
 - Five dribble slots (stick forward, left, right, back, no stick), a separate dunk button, sprint and stamina
 - Touch, keyboard and mouse, and controller support with rebindable controls and Xbox or PlayStation button names
-- Every screen works on a controller or a keyboard, from the start screen through the menus
 - Frame-rate and quality settings, and a pause menu
 - An update check on start: when a new build has been pushed, the game downloads it and reloads before loading in
 
