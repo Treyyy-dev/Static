@@ -2226,6 +2226,15 @@ function renderSettings(){
   }else if(S.ctl==='pad'){
     var g=getPad();
     h+='<h2>Controller binds</h2>'+(padBlocked?'<p class="note" style="color:var(--hot);opacity:1">This page is not allowed to read controllers where it is open right now. Open the game from its own web address to use one.</p>':'')+'<p class="note">In menus the D-pad or stick moves between buttons, '+padName(0)+' picks, '+padName(1)+' goes back and the right stick scrolls. '+padName(9)+' opens Settings in the city and pauses a game.</p><p class="note">'+(g?'Connected: '+String(g.id).replace(/[<>&]/g,'').slice(0,40):'No controller found yet. Browsers only show a controller to a game after you press a button on it, and moving a stick does not count. Press any button once.')+' The left stick or D-pad moves. Flick the right stick to dribble in that direction. '+padName(9)+' or your shoot button starts a game.</p>';
+    var dg=[],gl=null,cnt=0,ids=[],framed=false,k2;
+    try{gl=navigator.getGamepads?navigator.getGamepads():null;}catch(e){}
+    if(gl)for(k2=0;k2<gl.length;k2++)if(gl[k2]){cnt++;ids.push(String(gl[k2].id).replace(/[<>&]/g,'').slice(0,34));}
+    try{framed=window.self!==window.top;}catch(e){framed=true;}
+    dg.push('Controller support in this browser: '+(navigator.getGamepads?'yes':'NO'));
+    dg.push('Controllers the browser is showing this page: '+cnt+(ids.length?' ('+ids.join(', ')+')':''));
+    dg.push('Running as its own page: '+(framed?'NO, it is inside another page':'yes'));
+    dg.push('Secure page: '+(window.isSecureContext===false?'NO':'yes')+(navigator.standalone?'. Opened from a Home Screen icon':''));
+    h+='<h2>Controller check</h2><p class="note" style="opacity:1">'+dg.join('<br>')+'</p><p class="note">On iPhone and iPad a website can only see a controller in the Safari app itself. A link opened inside another app, or in another browser, usually cannot. Press a button on the controller, then tap Check again.</p><div class="row"><button class="chip" id="padCheck">Check again</button></div>';
     h+='<h2>Button names</h2>'+chips('ps_',PSO,S.padStyle)+'<p class="note">Auto shows PlayStation names when it sees a PlayStation controller. Showing '+(padStyle()==='ps'?'PlayStation':'Xbox')+' names now.</p>';
     PADROWS.forEach(function(r){h+='<div class="bindrow"><span>'+r[1]+'</span><button class="chip" id="pb_'+r[0]+'" aria-pressed="'+(padCap===r[0]?'true':'false')+'">'+(padCap===r[0]?'Press a button':padName(S.pad[r[0]]))+'</button></div>';});
     h+='<div class="row"><button class="chip" id="bindReset">Reset controller binds</button></div>';
@@ -2242,6 +2251,7 @@ function renderSettings(){
     $('bindReset').addEventListener('click',function(){keyCap=null;S.keys=JSON.parse(JSON.stringify(DEFSET.keys));persist();applyControls();renderSettings();});
   }else if(S.ctl==='pad'){
     pick('ps_',PSO,function(v){S.padStyle=v;});
+    $('padCheck').addEventListener('click',function(){renderSettings();});
     PADROWS.forEach(function(r){$('pb_'+r[0]).addEventListener('click',function(){padCap=r[0];renderSettings();});});
     $('bindReset').addEventListener('click',function(){padCap=null;S.pad=JSON.parse(JSON.stringify(DEFSET.pad));persist();applyControls();renderSettings();});
   }else{
