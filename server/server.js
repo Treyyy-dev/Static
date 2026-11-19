@@ -4,7 +4,7 @@
 // if that player leaves, the server hands the match to another player.
 'use strict';
 const http = require('http'), crypto = require('crypto');
-const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, ORDER = [0, 3, 1, 4, 2, 5], WIN = 15;
+const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, ORDER = [0, 3, 1, 4, 2, 5], WIN = 21;
 
 /* ---------- tiny WebSocket layer ---------- */
 function frame(op, buf) {
