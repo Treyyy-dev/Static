@@ -188,6 +188,14 @@ body.layedit #stam{display:none}
   text-shadow:7px 7px 0 var(--ink),11px 11px 0 var(--hot)}
 .thead p{margin:6px 0 0;font-size:clamp(15px,2.6vw,24px);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--paper);text-shadow:2px 2px 0 var(--ink)}
 #tStart{position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:7;white-space:nowrap}
+#boot{position:fixed;inset:0;z-index:19;display:none;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(circle at 2px 2px,rgba(255,246,227,.08) 1.6px,transparent 2.2px) 0 0/16px 16px,var(--ink)}
+.bootbox{width:min(460px,100%);display:flex;flex-direction:column;gap:10px;text-align:center}
+#bootT{margin:0;font-family:var(--display);font-size:clamp(22px,5vw,34px);line-height:1.1;color:var(--home);text-shadow:3px 3px 0 var(--hot);text-wrap:balance}
+#bootS{margin:0;font-size:17px;font-weight:500;min-height:1.3em}
+.bootbar{height:16px;border:3px solid var(--paper);border-radius:10px;overflow:hidden;background:#2a2738}
+#bootBar{display:block;height:100%;width:0;background:var(--good);transition:width .25s linear}
+@media (prefers-reduced-motion:reduce){#bootBar{transition:none}}
 .touch #stickzone{display:block}.touch .btn{display:flex}.touch #keys{display:none}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   background:rgba(20,18,28,.82);text-align:center;padding:20px;pointer-events:auto}
@@ -258,6 +266,7 @@ body.pauseset #settings{padding-top:0}
 <div id="layBar"><span>Drag the buttons where you want them</span><button class="chip" id="layReset">Reset</button><button class="chip" id="layDone">Done</button></div>
 <div class="ov" id="over"><h1 id="oT">GAME</h1><p id="oS"></p><div class="row"><button class="go" id="again">Run it back</button><button class="go" id="toLobby" style="background:var(--ink);color:var(--paper)">Lobby</button></div></div>
 <div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1><p>Street ball, anime rules</p></div><button class="go" id="tStart">Tap to start</button></div>
+<div id="boot" role="status"><div class="bootbox"><h2 id="bootT">Checking for updates</h2><p id="bootS"></p><div class="bootbar"><b id="bootBar"></b></div></div></div>
 <div class="ov" id="pause"><h1>PAUSED</h1><button class="go" id="pResume">Resume</button><button class="go" id="pSettings" style="background:var(--home);color:var(--ink)">Settings</button><button class="go" id="pQuit" style="background:var(--ink);color:var(--paper)">Quit to lobby</button></div>
 <div class="ov" id="err"><h1>Can't load</h1><p>The 3D engine did not load. Check your connection and reopen the page.</p></div>
 
@@ -1740,8 +1749,58 @@ function buildTitle(){
   el.addEventListener('pointermove',function(e){el.style.setProperty('--mx',((e.clientX/window.innerWidth-0.5)*2).toFixed(3));el.style.setProperty('--my',((e.clientY/window.innerHeight-0.5)*2).toFixed(3));});
   el.addEventListener('click',closeTitle);
   window.addEventListener('keydown',function(e){if(titleOn&&(e.code==='Enter'||e.code==='Space')){e.preventDefault();closeTitle();}});
+  var upd=false;try{upd=sessionStorage.getItem('static_updated')==='1';if(upd)sessionStorage.removeItem('static_updated');}catch(e){}
+  if(upd){titleOn=false;el.style.display='none';startBoot(true);}
 }
-function closeTitle(){if(!titleOn)return;titleOn=false;$('title').style.display='none';startAudio();}
+function closeTitle(){if(!titleOn)return;titleOn=false;$('title').style.display='none';startAudio();startBoot(false);}
+/* after the start screen: look for a newer build, download it if there is one, then load in */
+function hashStr(x){var h=5381;for(var i=0;i<x.length;i++)h=((h<<5)+h+x.charCodeAt(i))|0;return (h>>>0).toString(16);}
+function bootMsg(t,sub,pct){$('bootT').textContent=t;$('bootS').textContent=sub||'';$('bootBar').style.width=pct+'%';}
+function checkUpdate(cb){
+  try{
+    if(typeof fetch!=='function'){cb(null);return;}
+    fetch('index.html',{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('no');return r.text();}).then(function(txt){
+      var h=hashStr(txt),last=null;
+      try{last=localStorage.getItem('static_build');}catch(e){cb({ok:true});return;}
+      if(!last){try{localStorage.setItem('static_build',h);}catch(e){}cb({ok:true});return;}
+      cb(last!==h?{ok:true,update:true,hash:h}:{ok:true});
+    }).catch(function(){cb(null);});
+  }catch(e){cb(null);}
+}
+function startBoot(afterUpdate){
+  $('boot').style.display='flex';
+  if(afterUpdate){loadSession('Update installed. You are on the newest build.');return;}
+  bootMsg('Checking for updates','Looking for a newer build',12);
+  var t0=Date.now(),done=false;
+  function finish(res){
+    if(done)return;done=true;
+    setTimeout(function(){
+      if(res&&res.update)downloadUpdate(res.hash);
+      else loadSession(res?'You are on the newest build.':'Could not check for updates, so this build will load.');
+    },Math.max(0,1000-(Date.now()-t0)));
+  }
+  checkUpdate(finish);setTimeout(function(){finish(null);},6000);
+}
+function downloadUpdate(h){
+  var pct=10,iv=setInterval(function(){
+    pct=Math.min(100,pct+9+Math.random()*9);bootMsg('Downloading update','New build found. Grabbing it real quick.',pct);
+    if(pct<100)return;
+    clearInterval(iv);bootMsg('Installing update','Almost there',100);
+    try{localStorage.setItem('static_build',h);}catch(e){}
+    var flagged=false;try{sessionStorage.setItem('static_updated','1');flagged=true;}catch(e){}
+    setTimeout(function(){if(flagged){try{location.reload();return;}catch(e){}}loadSession('Update downloaded.');},450);
+  },130);
+  bootMsg('Downloading update','New build found. Grabbing it real quick.',pct);
+}
+function loadSession(note){
+  var steps=['Sweeping the court','Checking the rims','Pumping up the ball','Calling your squad'],i=0;
+  bootMsg('Loading hoop session',note,5);
+  var iv=setInterval(function(){
+    if(i<steps.length){bootMsg('Loading hoop session',steps[i],20+i*24);i++;return;}
+    clearInterval(iv);bootMsg('Loading hoop session','Ready',100);
+    setTimeout(function(){$('boot').style.display='none';},260);
+  },300);
+}
 function applyPose(b,kind,id,extra){
   var P={},k,j=b.j;for(k in POSE[kind])P[k]=POSE[kind][k];if(POSE[id])for(k in POSE[id])P[k]=POSE[id][k];if(extra)for(k in extra)P[k]=extra[k];
   j.torso.rotation.x=P.lean||0;j.shL.rotation.x=P.sLx||0;j.shL.rotation.z=P.sLz||0.1;j.shR.rotation.x=P.sRx||0;j.shR.rotation.z=-(P.sRz||0.1);
