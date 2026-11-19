@@ -1140,6 +1140,7 @@ function humanThink(p,I,dt){ // one real player's input, whether it came from th
 /* ================= ONLINE: up to 3v3 real players, quick match =================
    No game server. Players connect straight to each other (WebRTC through the PeerJS public broker).
    One player hosts and runs the match; the others send their inputs and draw what the host reports. */
+var SERVER=''; // the match server's address. Empty = players connect straight to each other.
 var MMROOMS=6,MMPRE='static3v3-mm1-',ZEROI={wx:0,wz:0,yaw:0,shoot:false,shootP:false,shootR:false,passP:false,tgt:-1,moveP:false,slot:'n',flick:false,dunkP:false,sprint:false};
 var net={on:false,role:null,peer:null,hostPeer:null,conn:null,guests:[],searching:false,k:0,cd:-1,started:false,trying:null,tmo:0,snap:null,sendT:0,outT:0,out:null,tick:0};
 var ACTS=[null,'shoot','jump','dunk','fall','drib'],BST=['held','shot','pass','loose'],teamRings=[];
@@ -1170,14 +1171,15 @@ function sayTo(p,txt,col,dur){ // a call only one player sees
   if(p===user)banner(txt,col,dur);else if(p.net)netSend(p.net,{t:'e',k:'you',txt:txt,col:col,dur:dur});
 }
 function netSend(c,o){try{if(c&&c.open!==false)c.send(o);}catch(e){}}
-function netCast(o){for(var i=0;i<net.guests.length;i++)netSend(net.guests[i].c,o);}
+function netCast(o){if(net.srv){srvSend({t:'c',d:o});return;}for(var i=0;i<net.guests.length;i++)netSend(net.guests[i].c,o);}
 function loadPeer(cb){
   if(window.Peer){cb(true);return;}
   try{var s=document.createElement('script');s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=function(){cb(!!window.Peer);};s.onerror=function(){cb(false);};document.head.appendChild(s);}catch(e){cb(false);}
 }
 function mmFail(t){mmStop();$('mm').style.display='flex';mmStatus(t);}
 function mmStop(){
-  net.searching=false;net.started=false;clearTimeout(net.tmo);clearInterval(net.tick);net.tick=0;
+  net.searching=false;net.started=false;clearTimeout(net.tmo);clearTimeout(net.tmo2);clearInterval(net.tick);net.tick=0;
+  if(net.ws){var w0=net.ws;net.ws=null;try{w0.close();}catch(e){}}net.srv=false;
   try{if(net.conn)net.conn.close();}catch(e){}
   net.guests.forEach(function(g){try{g.c.close();}catch(e){}});
   try{if(net.hostPeer)net.hostPeer.destroy();}catch(e){}try{if(net.peer)net.peer.destroy();}catch(e){}
@@ -1186,6 +1188,11 @@ function mmStop(){
 function mmOpen(){
   if(net.searching||net.on)return;
   $('mm').style.display='flex';$('mmStart').style.display='none';mmStatus('Connecting');
+  if(SERVER&&typeof WebSocket!=='undefined'){net.searching=true;net.srv=true;net.t0=Date.now();srvOpen();return;}
+  peerOpen();
+}
+function peerOpen(){
+  net.srv=false;
   if(typeof RTCPeerConnection==='undefined'&&!window.Peer){mmStatus('Online play is not available where the game is open right now. Open the game from its own web address in a browser.');return;}
   net.searching=true;
   loadPeer(function(ok){
@@ -1250,26 +1257,79 @@ function hostConn(c){
       if(net.guests.length>=5)netStart();
       return;
     }
-    if(d.t==='i'&&g&&g.p&&d.I){ // keep presses that have not been used yet
-      var o=g.p.I,n=d.I;
-      if(o){n.shootP=n.shootP||o.shootP;n.shootR=n.shootR||o.shootR;n.passP=n.passP||o.passP;n.dunkP=n.dunkP||o.dunkP;if(o.moveP&&!n.moveP){n.moveP=true;n.slot=o.slot;n.flick=o.flick;}}
-      g.p.I=n;
-    }
+    if(d.t==='i'&&g)hostInput(g,d.I);
   });
   c.on('close',function(){
     for(var i=0;i<net.guests.length;i++)if(net.guests[i].c===c){
       var g=net.guests[i];
-      if(net.started){if(g.p){g.p.net=null;g.p.human=false;g.p.I=null;sayAll('A PLAYER LEFT. CPU TAKES OVER',-2,1.4);}g.c=null;}
+      if(net.started)hostLost(g);
       else{net.guests.splice(i,1);if(!net.guests.length)net.cd=-1;mmLobby();}
       return;
     }
   });
+}
+function hostInput(g,n){ // keep presses that have not been used yet
+  if(!g.p||!n||typeof n!=='object')return;var o=g.p.I;
+  if(o){n.shootP=n.shootP||o.shootP;n.shootR=n.shootR||o.shootR;n.passP=n.passP||o.passP;n.dunkP=n.dunkP||o.dunkP;if(o.moveP&&!n.moveP){n.moveP=true;n.slot=o.slot;n.flick=o.flick;}}
+  g.p.I=n;
+}
+function hostLost(g){if(g.p&&g.p.net){g.p.net=null;g.p.human=false;g.p.I=null;sayAll('A PLAYER LEFT. CPU TAKES OVER',-2,1.4);}g.c=null;}
+/* ----- match server: finds the players and carries the messages ----- */
+function srvSend(o){try{if(net.ws&&net.ws.readyState===1)net.ws.send(JSON.stringify(o));}catch(e){}}
+function srvConn(s){return {open:true,send:function(o){srvSend({t:'to',s:s,d:o});}};}
+function srvOpen(){
+  var ws,opened=false;
+  try{ws=new WebSocket(SERVER);}catch(e){peerOpen();return;}
+  net.ws=ws;clearTimeout(net.tmo);
+  net.tmo=setTimeout(function(){if(!opened&&net.ws===ws)mmStatus('Waking up the server. This can take about a minute.');},3500);
+  ws.onopen=function(){
+    if(net.ws!==ws)return;opened=true;clearTimeout(net.tmo);mmStatus('Looking for players');srvSend({t:'find',load:myLoadout()});
+    clearInterval(net.tick);net.tick=setInterval(function(){srvSend({t:'ping'});},20000);
+  };
+  ws.onmessage=function(ev){var d=null;try{d=JSON.parse(ev.data);}catch(e){}if(d&&net.ws===ws)srvData(d);};
+  ws.onclose=function(){
+    if(net.ws!==ws)return;net.ws=null;clearTimeout(net.tmo);
+    if(net.on){netDropped('Lost the connection to the server.');return;}
+    if(!net.searching)return;
+    if(opened){mmFail('Lost the connection to the server. Try again.');return;}
+    if(Date.now()-net.t0<90000){mmStatus('Waking up the server. This can take about a minute.');net.tmo2=setTimeout(function(){if(net.searching&&net.srv&&!net.ws)srvOpen();},3000);}
+    else peerOpen();   // server never answered: fall back to connecting players directly
+  };
+  ws.onerror=function(){};
+}
+function srvData(d){
+  var i,g;
+  if(d.t==='lobby'){if(!net.on){mmStatus(lobbyText(d.n,d.cd));$('mmStart').style.display=(d.first&&d.n>=2)?'':'none';}return;}
+  if(d.t==='start'){
+    if(net.on||!d.list)return;
+    net.guests=[];net.conn=null;net.started=true;
+    if(d.host){net.role='host';for(i=0;i<6;i++)if(d.list[i]&&i!==d.you)net.guests.push({c:srvConn(i),load:d.list[i].load||{},slot:i,p:null});}
+    else{net.role='guest';net.conn={open:true,send:srvSend};}
+    netBegin(d.list,d.you,d.win);return;
+  }
+  if(!net.on)return;
+  if(net.role==='host'){
+    if(d.t==='i'||d.t==='left'){g=null;for(i=0;i<net.guests.length;i++)if(net.guests[i].slot===d.s)g=net.guests[i];if(!g)return;if(d.t==='i')hostInput(g,d.I);else hostLost(g);}
+  }
+  else if(d.t==='host')hostTakeover(d.humans||[]);
+  else guestData(d);
+}
+function hostTakeover(humans){ // the player running the match left, and the server picked this device to carry on
+  net.role='host';net.conn=null;net.guests=[];net.snap=null;net.out=null;net.sendT=0;
+  players.forEach(function(p,s){
+    p.net=null;p.I=null;p.act=null;p.stun=0;p.y=0;p.vy=0;p.vx=p.vz=0;p.wx=p.wz=0;
+    if(p===user)p.human=true;
+    else if(humans.indexOf(s)>=0){p.human=true;var g={c:srvConn(s),load:{},slot:s,p:p};p.net=g.c;net.guests.push(g);}
+    else p.human=false;
+  });
+  if(game.state!=='over'){setupInbound(game.poss===1?1:0);sayAll('HOST LEFT. PLAY ON',-2,1.6);}
 }
 function mmLobby(){
   var n=1+net.guests.length;mmStatus(lobbyText(n,net.cd));$('mmStart').style.display=n>=2?'':'none';
   netCast({t:'lobby',n:n,cd:net.cd});
 }
 function netStart(){
+  if(net.srv){srvSend({t:'startnow'});return;}
   if(net.role!=='host'||net.started)return;
   net.started=true;clearInterval(net.tick);net.tick=0;
   var order=[0,3,1,4,2,5],list=[null,null,null,null,null,null];

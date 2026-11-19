@@ -26,3 +26,7 @@ Progress (coins, characters, moves and settings) is saved in the browser on the 
 
 - `index.html`: the whole game in one file
 - `static-icon.svg`, `static-icon.png`, `icon-192.png`, `apple-touch-icon.png`: the game icon, used for the browser tab and home-screen shortcut
+
+## Match server
+
+`server/` holds the online match server (Node, no dependencies). Run it with `node server.js` from that folder. On Render: Web Service, Root Directory `server`, Build Command `npm install`, Start Command `node server.js`.
