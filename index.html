@@ -198,7 +198,11 @@ body.layedit #stam{display:none}
 @media (prefers-reduced-motion:reduce){#bootBar{transition:none}}
 #padHelp{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:2;display:none;align-items:center;gap:8px;width:min(560px,calc(100% - 24px));background:rgba(20,18,28,.9);border:2px solid var(--home);border-radius:10px;padding:6px 10px;font-size:14px;font-weight:500;line-height:1.25}
 #padHelp .chip{flex:0 0 auto;padding:5px 10px;font-size:14px}
-#playOnline{position:absolute;right:16px;bottom:92px;font-size:17px;padding:10px 20px;background:var(--away)}
+#modes{display:none;z-index:7}
+#modes .row{display:flex;gap:10px;width:min(440px,88vw)}
+#modes .card{text-align:center;padding:12px 10px;width:min(440px,88vw);flex:0 0 auto}
+#modes .card b{display:block;font-family:var(--display);font-size:30px;color:var(--home);line-height:1.05}
+#modes .go{min-width:200px}
 #mm{display:none;z-index:8}
 #mm .go{min-width:220px}
 .touch #stickzone{display:block}.touch .btn{display:flex}.touch #keys{display:none}
@@ -252,8 +256,6 @@ body.pauseset #settings{padding-top:0}
   <div id="toast" role="status"></div>
   <div id="padHelp"><span>Controller not responding? Press a button on it. If nothing happens, turn the controller off and on while this is open, or</span><button class="chip" id="padFind">look again</button></div>
   <div id="setup">
-    <h2>Play to</h2>
-    <div class="row"><button class="chip" id="win11">11</button><button class="chip" id="win15">15</button><button class="chip" id="win21">21</button></div>
     <h2>CPU squad</h2>
     <div class="row"><button class="chip" id="diff0">Rookie</button><button class="chip" id="diff1">Pro</button><button class="chip" id="diff2">Legend</button></div>
     <details><summary>Controls</summary><ul class="how">
@@ -264,7 +266,6 @@ body.pauseset #settings{padding-top:0}
     </ul></details>
     <p id="rot" style="font-size:13px;opacity:.8"></p>
   </div>
-  <button class="go" id="playOnline">Play online</button>
   <button class="go" id="play">Play</button>
   <div id="baller"><div class="sheet" id="ballerSheet"></div></div>
   <div id="shop"><div class="sheet" id="shopSheet"></div></div>
@@ -276,6 +277,11 @@ body.pauseset #settings{padding-top:0}
 <div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1><p>Street ball, anime rules</p></div><button class="go" id="tStart">Tap to start</button></div>
 <div id="boot" role="status"><div class="bootbox"><h2 id="bootT">Checking for updates</h2><p id="bootS"></p><div class="bootbar"><b id="bootBar"></b></div></div></div>
 <div class="ov" id="pause"><h1>PAUSED</h1><button class="go" id="pResume">Resume</button><button class="go" id="pSettings" style="background:var(--home);color:var(--ink)">Settings</button><button class="go" id="pQuit" style="background:var(--ink);color:var(--paper)">Quit to lobby</button></div>
+<div class="ov" id="modes"><h1>GAME MODE</h1>
+  <div class="row" role="group" aria-label="Where to play"><button class="chip" id="fOff" aria-pressed="true">Offline</button><button class="chip" id="fOn" aria-pressed="false">Online</button></div>
+  <button class="card" id="mode3" aria-pressed="true"><b>3v3</b><span>First to 21</span></button>
+  <p id="modeD" style="font-size:15px;opacity:.85"></p>
+  <div class="row"><button class="go" id="mBack" style="background:var(--ink);color:var(--paper);min-width:0;flex:1">Back</button><button class="go" id="mStart" style="min-width:0;flex:1.4">Start</button></div></div>
 <div class="ov" id="mm"><h1>FINDING A MATCH</h1><p id="mmS" role="status">Connecting</p><p style="font-size:15px;opacity:.8">Up to 3 on 3. You control one baller. Empty spots are played by the CPU.</p><button class="go" id="mmStart" style="display:none">Start now</button><button class="go" id="mmCancel" style="background:var(--ink);color:var(--paper)">Cancel</button></div>
 <div class="ov" id="err"><h1>Can't load</h1><p>The 3D engine did not load. Check your connection and reopen the page.</p></div>
 
@@ -1336,11 +1342,11 @@ function netStart(){
   var order=[0,3,1,4,2,5],list=[null,null,null,null,null,null];
   list[0]={load:myLoadout()};
   net.guests.forEach(function(g,i){g.slot=order[i+1];list[g.slot]={load:g.load};});
-  net.guests.forEach(function(g){netSend(g.c,{t:'start',list:list,you:g.slot,win:15});});
-  netBegin(list,0,15);
+  net.guests.forEach(function(g){netSend(g.c,{t:'start',list:list,you:g.slot,win:21});});
+  netBegin(list,0,21);
 }
 function netBegin(list,me,win){
-  net.on=true;net.searching=false;net.snap=null;net.out=null;$('mm').style.display='none';if(!net.win0)net.win0=WIN;WIN=win||15;
+  net.on=true;net.searching=false;net.snap=null;net.out=null;$('mm').style.display='none';if(!net.win0)net.win0=WIN;WIN=21;
   players.forEach(function(p,s){
     var r=list[s];p.net=null;p.I=null;p.isUser=s===me;p.stam=1;p.tired=false;p.stamCd=0;
     if(r){var L=BYID[r.load&&r.load.c];if(!L||L.kind!=='char')L=CHARS[0];setLook(p,L,L.j,L.s,L.nc);p.human=true;p.load=mkLoad(r.load);p.spd=L.spd;}
@@ -1766,7 +1772,7 @@ function navCur(c){ // the highlighted control, or the one now sitting where it 
   return best;
 }
 function navDefault(c){
-  var i,p=$('play');if(c.indexOf(p)>=0)return p;
+  var i,p=$('mStart');if(c.indexOf(p)>=0)return p;p=$('play');if(c.indexOf(p)>=0)return p;
   for(i=0;i<c.length;i++)if(c[i].classList.contains('go'))return c[i];
   return c[0]||null;
 }
@@ -1785,6 +1791,7 @@ function navMove(dx,dy){
 function navBack(){
   if($('pullRes').style.display&&$('pullRes').style.display!=='none'){$('resOk').click();return;}
   if($('mm').style.display==='flex'){$('mmCancel').click();return;}
+  if(modesOpen()){hideModes();return;}
   if(paused){if(inPauseSet)pauseBack();else setPause(false);return;}
   if(game.state==='over'){$('toLobby').click();return;}
   if(sheetOpen!=='')$('tabHome').click();
@@ -1821,7 +1828,7 @@ function update(dt){
     var pst=pollPad();inp.pauseP=false;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;inp.shoot=false;
     if(pst&&titleOn){closeTitle();return;}
     padMenu();if(game.state!=='menu'&&game.state!=='over')return;
-    if(pst&&!layEdit&&!net.on&&!net.searching&&(game.state==='over'||sheetOpen==='')){begin();return;}
+    if(pst&&!layEdit&&!net.on&&!net.searching&&(game.state==='over'||sheetOpen==='')){if(game.state==='over'){begin();return;}if(modesOpen())modeStart();else showModes();if(game.state!=='menu')return;}
     if(game.state==='menu'){
       var port=window.innerWidth<window.innerHeight,so=sheetOpen==='baller',la=Math.sin(game.time*0.5)*(so?0.15:0.45),ld=port?(so?5.2:4.0):3.1,lk=Math.min(1,dt*4),th=Math.tan(camera.fov*PI/360);
       camPos.x+=(user.x+Math.sin(la)*ld-camPos.x)*lk;camPos.y+=(1.5-camPos.y)*lk;camPos.z+=(user.z+Math.cos(la)*ld-camPos.z)*lk;
@@ -2294,7 +2301,17 @@ function pull(n){
   $('resT').textContent=n===1?'You pulled':'Your 10 pull';$('pullRes').style.display='flex';
   renderLobby();
 }
-function setWin(n){WIN=n;[11,15,21].forEach(function(v){$('win'+v).setAttribute('aria-pressed',v===n?'true':'false');});}
+function setWin(n){WIN=n;}
+var modeOnline=false;
+function modesOpen(){return $('modes').style.display==='flex';}
+function setFilter(on){
+  modeOnline=!!on;save.set.onl=modeOnline?1:0;persist();
+  $('fOff').setAttribute('aria-pressed',on?'false':'true');$('fOn').setAttribute('aria-pressed',on?'true':'false');
+  $('modeD').textContent=on?'Real players, up to 3 on 3. You control one baller and the CPU fills empty spots.':'You and two CPU teammates against the CPU squad you picked.';
+}
+function showModes(){if(net.on||net.searching)return;setFilter(!!save.set.onl);$('modes').style.display='flex';}
+function hideModes(){$('modes').style.display='none';}
+function modeStart(){hideModes();setWin(21);if(modeOnline)mmOpen();else begin();}
 function setDiff(d){DIFF=d;[0,1,2].forEach(function(v){$('diff'+v).setAttribute('aria-pressed',v===d?'true':'false');});}
 function applySettings(){
   DSTEAL=[0.6,1,1.5][DIFF];
@@ -2307,7 +2324,8 @@ function applySettings(){
   var lp=[[0,-2.2],[-2.4,-3.2],[2.4,-3.2]];
   LOOKS.forEach(function(t,ti){t.forEach(function(L,i){L.lx=lp[i][0];L.lz=ti===0?lp[i][1]:-lp[i][1]+3;});});
   [0,1,2].forEach(function(i){$('diff'+i).addEventListener('click',function(){setDiff(i);});});
-  [11,15,21].forEach(function(v){$('win'+v).addEventListener('click',function(){setWin(v);});});
+  $('fOff').addEventListener('click',function(){setFilter(false);});$('fOn').addEventListener('click',function(){setFilter(true);});
+  $('mBack').addEventListener('click',hideModes);$('mStart').addEventListener('click',modeStart);
   $('tabHome').addEventListener('click',function(){openSheet('');});
   $('tabBaller').addEventListener('click',function(){openSheet('baller');});
   $('tabShop').addEventListener('click',function(){openSheet('shop');});
@@ -2329,10 +2347,9 @@ function applySettings(){
 })();
 function showLobby(){if(net.on)netLeave();paused=false;inPauseSet=false;document.body.classList.remove('pauseset');$('pause').style.display='none';renderLobby();openSheet('');game.state='menu';document.body.classList.add('lobby');$('lobby').style.display='block';$('over').style.display='none';$('meter').style.display='none';lobbyPose();}
 function begin(){if(net.on||net.searching)return;user.load=mkLoad(myLoadout());paused=false;$('pause').style.display='none';openSheet('');startAudio();document.body.classList.remove('lobby');$('lobby').style.display='none';$('over').style.display='none';applySettings();newGame();}
-$('play').addEventListener('click',begin);
+$('play').addEventListener('click',showModes);
 $('again').addEventListener('click',begin);
 $('toLobby').addEventListener('click',showLobby);
-$('playOnline').addEventListener('click',mmOpen);
 $('mmCancel').addEventListener('click',function(){mmStop();$('mm').style.display='none';});
 $('mmStart').addEventListener('click',netStart);
 $('bPause').addEventListener('click',function(){setPause(true);});
