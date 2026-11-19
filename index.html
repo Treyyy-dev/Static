@@ -198,6 +198,9 @@ body.layedit #stam{display:none}
 @media (prefers-reduced-motion:reduce){#bootBar{transition:none}}
 #padHelp{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:2;display:none;align-items:center;gap:8px;width:min(560px,calc(100% - 24px));background:rgba(20,18,28,.9);border:2px solid var(--home);border-radius:10px;padding:6px 10px;font-size:14px;font-weight:500;line-height:1.25}
 #padHelp .chip{flex:0 0 auto;padding:5px 10px;font-size:14px}
+#playOnline{position:absolute;right:16px;bottom:92px;font-size:17px;padding:10px 20px;background:var(--away)}
+#mm{display:none;z-index:8}
+#mm .go{min-width:220px}
 .touch #stickzone{display:block}.touch .btn{display:flex}.touch #keys{display:none}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
   background:rgba(20,18,28,.82);text-align:center;padding:20px;pointer-events:auto}
@@ -223,7 +226,7 @@ body.pauseset #settings{padding-top:0}
 <body class="lobby">
 <canvas id="c"></canvas>
 <div id="hud">
-  <div id="score"><div id="sh"><small>YOU</small><span id="sH">0</span></div><div id="clk">24</div><div id="sa"><span id="sA">0</span><small>CPU</small></div></div>
+  <div id="score"><div id="sh"><small id="sLblH">YOU</small><span id="sH">0</span></div><div id="clk">24</div><div id="sa"><span id="sA">0</span><small id="sLblA">CPU</small></div></div>
   <div id="role">OFFENSE</div>
   <button id="bPause" aria-label="Pause">II</button>
   <div id="banner"></div>
@@ -260,6 +263,7 @@ body.pauseset #settings{padding-top:0}
     </ul></details>
     <p id="rot" style="font-size:13px;opacity:.8"></p>
   </div>
+  <button class="go" id="playOnline">Play online</button>
   <button class="go" id="play">Play</button>
   <div id="baller"><div class="sheet" id="ballerSheet"></div></div>
   <div id="shop"><div class="sheet" id="shopSheet"></div></div>
@@ -271,6 +275,7 @@ body.pauseset #settings{padding-top:0}
 <div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1><p>Street ball, anime rules</p></div><button class="go" id="tStart">Tap to start</button></div>
 <div id="boot" role="status"><div class="bootbox"><h2 id="bootT">Checking for updates</h2><p id="bootS"></p><div class="bootbar"><b id="bootBar"></b></div></div></div>
 <div class="ov" id="pause"><h1>PAUSED</h1><button class="go" id="pResume">Resume</button><button class="go" id="pSettings" style="background:var(--home);color:var(--ink)">Settings</button><button class="go" id="pQuit" style="background:var(--ink);color:var(--paper)">Quit to lobby</button></div>
+<div class="ov" id="mm"><h1>FINDING A MATCH</h1><p id="mmS" role="status">Connecting</p><p style="font-size:15px;opacity:.8">Up to 3 on 3. You control one baller. Empty spots are played by the CPU.</p><button class="go" id="mmStart" style="display:none">Start now</button><button class="go" id="mmCancel" style="background:var(--ink);color:var(--paper)">Cancel</button></div>
 <div class="ov" id="err"><h1>Can't load</h1><p>The 3D engine did not load. Check your connection and reopen the page.</p></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -741,7 +746,7 @@ var camYaw=0,camPos=new T.Vector3(0,3,-18);
 
 function mkPlayer(team,idx){
   var L=LOOKS[team][idx],b=buildHuman(L,team===0?HOME:AWAY,team===0?0x1d1d2b:0xf4f4f4,team===0?'#14121c':'#fff6e3');
-  var p={team:team,idx:idx,isUser:team===0&&idx===0,g:b.g,j:b.j,phys:b.phys,pface:0,h:L.h,x:0,z:0,y:0,vy:0,vx:0,vz:0,wx:0,wz:0,face:0,
+  var p={team:team,idx:idx,isUser:team===0&&idx===0,human:team===0&&idx===0,load:null,L0:L,net:null,I:null,g:b.g,j:b.j,phys:b.phys,pface:0,h:L.h,x:0,z:0,y:0,vy:0,vx:0,vz:0,wx:0,wz:0,face:0,
     spd:(team===0&&idx===0)?5.6:(team===0?5.0:4.85+idx*0.1),act:null,actT:0,released:false,relQ:false,aiRel:0.5,stun:0,immune:0,stealCd:0,
     phase:R()*6,dp:0,dpi:0,spot:-1,spotT:0,decT:R()*0.3,holdT:0,dodge:R()<.5?1:-1,dodgeT:1,callT:0,passAnim:0,shotSeen:0,shotId:0,
     d0x:0,d0z:0,d1x:0,d1z:0,slam:false,faceTo:null,shadow:mkShadow(),L:L,shot:L.shot||1,dunkR:L.dunkR||3.3,hand:-1,hand0:-1,hx:-0.3,moveCd:0,mvT:0.3,mvx:0,mvz:0,mvFace:0,mvType:'',mvPath:'front',_jumpIn:0,jK:null,dkK:null,jdx:0,jdz:0,dFace:0,stam:1,stamCd:0,tired:false,sprinting:false};
@@ -793,7 +798,7 @@ var keyCap=null,padCap=null,padPrev={},mouseShoot=false,layEdit=false;
 window.addEventListener('keydown',function(e){
   if(keyCap){e.preventDefault();if(e.code!=='Escape'){save.set.keys[keyCap]=e.code;persist();}keyCap=null;renderSettings();applyControls();return;}
   if(e.repeat)return;
-  if(e.code==='Escape'||e.code==='KeyP'){if(inPauseSet){if(!layEdit)pauseBack();}else if(game.state==='play'||game.state==='dead')setPause(!paused);return;}
+  if(e.code==='Escape'||e.code==='KeyP'){if(inPauseSet){if(!layEdit)pauseBack();}else if(game.state==='play'||game.state==='dead')setPause(net.on?$('pause').style.display!=='flex':!paused);return;}
   inp.keys[e.code]=true;var K=save.set.keys,live=game.state==='play'||game.state==='dead';
   if(e.code===K.shoot){inp.shoot=true;inp.shootP=true;}
   if(e.code===K.pass)inp.passP=true;
@@ -894,7 +899,7 @@ function giveBall(p){
 }
 function looseBall(vx,vy,vz,noPick){ball.state='loose';ball.holder=null;ball.passTo=null;ball.vel.set(vx,vy,vz);ball.noPick=noPick||0;}
 function startShot(p){
-  var J=p.isUser?mv('js'):JS0,hz0=atkZ(p.team),d0=hoopDist(p)||1;p.jK=J;
+  var J=p.load?p.load.js:JS0,hz0=atkZ(p.team),d0=hoopDist(p)||1;p.jK=J;
   p.act='shoot';p.actT=0;p.released=false;p.relQ=false;p.vy=J.vy;p.y=0.001;p.aiRel=J.dur*(0.55+R()*0.27);p.shotId++;
   p.jdx=J.drift?p.x/d0*J.drift:0;p.jdz=J.drift?-(hz0-p.z)/d0*J.drift:0;
   p.faceTo=Math.atan2(-p.x,hz0-p.z);
@@ -908,21 +913,21 @@ function releaseShot(p){
   var ux=-p.x/(d||1),uz=(hz-p.z)/(d||1),c=1,blocker=null;
   opps(p.team).forEach(function(o){
     var dd=pd(o,p),front=((o.x-p.x)*ux+(o.z-p.z)*uz)>0;
-    if(dd<1.5&&front&&o.y>0.25){c=Math.min(c,.45);if(R()<(o.isUser?.55:.35)*J.blk)blocker=o;}
+    if(dd<1.5&&front&&o.y>0.25){c=Math.min(c,.45);if(R()<(o.human?.55:.35)*J.blk)blocker=o;}
     else if(dd<1.3)c=Math.min(c,.66);else if(dd<2.2)c=Math.min(c,.88);
   });
   c=c+(1-c)*J.con;
   p.released=true;ball.holder=null;ball.shooter=p;ball.wasShot=true;ball.dunk=false;
   if(blocker){
     looseBall(-ux*3+(R()-.5)*3,2.5,-uz*3+(R()-.5)*3,0.25);
-    banner(blocker.isUser?'BLOCKED!':(p.isUser?'STUFFED!':'BLOCK!'),blocker.team===0?'var(--good)':'var(--hot)',0.9);sfx.steal();return;
+    sayAll('BLOCKED!',blocker.team,0.9,'steal');return;
   }
   var prob=Math.min(.97,shotBase(d,three)*(0.45+0.75*q)*c*p.shot*J.acc);
   ball.made=R()<prob;ball.pts=three?3:2;
   ball.p0.copy(ball.pos);ball.p1.set(0,RIMY,hz);
   if(!ball.made){var a=R()*PI*2,r=0.2+R()*0.12;ball.p1.x+=Math.cos(a)*r;ball.p1.z+=Math.sin(a)*r;}
   ball.T=Math.max(0.6,Math.min(1.7,0.5+d*0.09));ball.arc=(0.8+d*0.13)*J.arc;ball.t=0;ball.state='shot';
-  if(p.isUser)banner(q>=0.77?'PERFECT':(m<0.7?'EARLY':'LATE'),q>=0.77?'var(--good)':'',0.6);
+  sayTo(p,q>=0.77?'PERFECT':(m<0.7?'EARLY':'LATE'),q>=0.77?'var(--good)':'',0.6);
 }
 function dribMove(p,type,dx,dz,DRo,slow){
   var l=Math.hypot(dx,dz);if(l<0.01){dx=Math.sin(p.face);dz=Math.cos(p.face);l=1;}dx/=l;dz/=l;
@@ -938,24 +943,24 @@ function dribMove(p,type,dx,dz,DRo,slow){
   var hz=atkZ(p.team),d=hoopDist(p)||1,ux=-p.x/d,uz=(hz-p.z)/d,got=false;
   opps(p.team).forEach(function(o){
     if(o.stun>0||o.act||pd(o,p)>1.8||((o.x-p.x)*ux+(o.z-p.z)*uz)<0)return;
-    if(R()<DR.shake*(o.isUser?0.45:1)){o.stun=0.5;got=true;}
+    if(R()<DR.shake*(o.human?0.45:1)){o.stun=0.5;got=true;}
   });
-  if(got&&p.isUser)banner(DR.path==='step'?'SPACE!':'ANKLES!','var(--good)',0.7);
+  if(got)sayTo(p,DR.path==='step'?'SPACE!':'ANKLES!','var(--good)',0.7);
   sfx.bounce(0.3);
 }
 function startDunk(p){
   var hz=atkZ(p.team),d=hoopDist(p)||1,ux=-p.x/d,uz=(hz-p.z)/d;
   if(d<0.6){ux=0;uz=Math.sign(hz);}
-  p.act='dunk';p.actT=0;p.slam=false;p.d0x=p.x;p.d0z=p.z;p.d1x=-ux*0.42;p.d1z=hz-uz*0.42;p.faceTo=Math.atan2(ux,uz);p.dFace=p.faceTo;p.dkK=p.isUser?mv('dk'):DK0;p.shotId++;p.vx=p.vz=0;
+  p.act='dunk';p.actT=0;p.slam=false;p.d0x=p.x;p.d0z=p.z;p.d1x=-ux*0.42;p.d1z=hz-uz*0.42;p.faceTo=Math.atan2(ux,uz);p.dFace=p.faceTo;p.dkK=p.load?p.load.dk:DK0;p.shotId++;p.vx=p.vz=0;
 }
 function slam(p){
   var hz=atkZ(p.team),blocker=null;p.slam=true;p.act='fall';p.vy=0;
   var DKK=p.dkK||DK0;
-  opps(p.team).forEach(function(o){if(o.y>0.3&&pd(o,p)<1.25&&R()<(o.isUser?.5:.3)*DKK.blk)blocker=o;});
+  opps(p.team).forEach(function(o){if(o.y>0.3&&pd(o,p)<1.25&&R()<(o.human?.5:.3)*DKK.blk)blocker=o;});
   ball.holder=null;ball.shooter=p;ball.wasShot=true;ball.pos.set(0,RIMY+0.05,hz);
-  if(blocker){looseBall((R()-.5)*4,2.5,-Math.sign(hz)*(2+R()*2),0.25);banner(blocker.isUser?'REJECTED!':'BLOCK!',blocker.team===0?'var(--good)':'var(--hot)',0.9);sfx.steal();return;}
+  if(blocker){looseBall((R()-.5)*4,2.5,-Math.sign(hz)*(2+R()*2),0.25);sayAll('REJECTED!',blocker.team,0.9,'steal');return;}
   if(R()<DKK.ok){ball.pts=2;ball.dunk=true;ball.dunkName=DKK.shout;scored(p.team);}
-  else{looseBall((R()-.5)*3,3.5,-Math.sign(hz)*(1.5+R()*2),0.3);sfx.rim();kickNet(hz>0?0:1,0.05);}
+  else{looseBall((R()-.5)*3,3.5,-Math.sign(hz)*(1.5+R()*2),0.3);sndAll('rim');kickNet(hz>0?0:1,0.05);}
 }
 function doPass(p,m){
   if(!m)return;
@@ -970,8 +975,7 @@ function scored(team){
   game.score[team]+=ball.pts;hudScore();game.lastScorer=team;
   ball.state='loose';ball.dead=true;ball.vel.set(0,-4,0);
   sfx.swish();sfx.score();
-  var mine=team===0;
-  banner(ball.dunk?(mine?(ball.dunkName||'SLAM')+'! +2':'DUNKED ON +2'):(ball.pts===3?(mine?'FROM DEEP! +3':'THEY HIT A 3'):(mine?'BUCKET! +2':'THEY SCORE +2')),mine?'var(--home)':'var(--away)',1.4);
+  scoreBanner(team);if(net.on&&net.role==='host')netCast({t:'e',k:'score',team:team,pts:ball.pts,dunk:ball.dunk?1:0,name:ball.dunkName||''});
   game.state='dead';game.deadT=1.7;game.next=1-team;
 }
 function setupInbound(team){
@@ -999,7 +1003,7 @@ function isChaser(p){
 }
 function bestMate(p){
   var best=null,bs=-99;mates(p).forEach(function(m){
-    var s=Math.min(3,nearestOpp(m).d)+(22-hoopDist(m))*0.09+(m.isUser?0.7:0)+R()*0.6;
+    var s=Math.min(3,nearestOpp(m).d)+(22-hoopDist(m))*0.09+(m.human?0.7:0)+R()*0.6;
     if(m.stun>0)s-=5;if(s>bs){bs=s;best=m;}});return best;
 }
 function aiHandler(p,dt){
@@ -1007,7 +1011,8 @@ function aiHandler(p,dt){
   p.decT-=dt;
   if(p.decT<=0){
     p.decT=0.25;
-    if(p.team===0&&user.callT>0&&p.holdT>0.35){doPass(p,user);user.callT=0;return;}
+    var cm=null;mates(p).forEach(function(m2){if(m2.human&&m2.callT>0)cm=m2;});
+    if(cm&&p.holdT>0.35){doPass(p,cm);cm.callT=0;return;}
     if(d<p.dunkR&&p.holdT>0.2&&(n.d>0.85||R()<0.4)&&R()<0.75){startDunk(p);return;}
     if(n.p&&n.d<1.7&&p.moveCd<=0&&d>3.5&&d<11&&R()<0.22){
       var qx=-p.x/(d||1),qz=(hz-p.z)/(d||1);
@@ -1046,7 +1051,7 @@ function aiDefend(p,dt){
   p.stealCd-=dt;
   if(isH&&ball.state==='held'&&dm<1.25&&man.immune<=0&&p.stealCd<=0&&!man.act){
     p.stealCd=0.5;
-    if(R()<(man.isUser?0.022*DSTEAL:0.016)){giveBall(p);banner(man.isUser?'STRIPPED!':'STEAL!',p.team===0?'var(--good)':'var(--hot)',0.8);sfx.steal();man.stun=0.35;}
+    if(R()<(man.human?0.022*DSTEAL:0.016)){giveBall(p);sayAll('STEAL!',p.team,0.8,'steal');man.stun=0.35;}
   }
 }
 function aiThink(p,dt){
@@ -1070,60 +1075,291 @@ function aiThink(p,dt){
 }
 
 /* ---------- user ---------- */
-var dunkOn=false,stamShown=-1,tiredShown=false;
-function userThink(p,dt){
-  p.faceTo=null;p.callT-=dt;p.stealCd-=dt;
-  var hasBall=ball.state==='held'&&ball.holder===p,onO=game.poss===0;
-  var canD=hasBall&&!p.act&&game.state==='play'&&hoopDist(p)<dunkRange(p);
+var dunkOn=false,hudTgt=-1;
+function localInput(p){ // what the person on this device is asking for, in court terms
+  var fx=Math.sin(camYaw),fz=Math.cos(camYaw),rx=-fz,rz=fx,wx=fx*inp.iy+rx*inp.ix,wz=fz*inp.iy+rz*inp.ix,tgt=-1,bs=-9;
+  if(ball.state==='held'&&ball.holder===p)mates(p).forEach(function(m){var dx=m.x-p.x,dz=m.z-p.z,l=Math.hypot(dx,dz)||1;
+    var sc=(inp.ix||inp.iy)?(dx*wx+dz*wz)/l:(dx*fx+dz*fz)/l-l*0.02;if(sc>bs){bs=sc;tgt=players.indexOf(m);}});
+  hudTgt=tgt;
+  var I={wx:wx,wz:wz,yaw:camYaw,shoot:!!inp.shoot,shootP:!!inp.shootP,shootR:!!inp.shootR,passP:!!inp.passP,tgt:tgt,moveP:!!inp.moveP,flick:!!inp.dribSlot,
+    slot:inp.dribSlot||((Math.abs(inp.ix)>0.45&&Math.abs(inp.ix)>=Math.abs(inp.iy)*0.8)?(inp.ix>0?'r':'l'):inp.iy<-0.45?'b':inp.iy>0.45?'f':'n'),
+    dunkP:!!inp.dunkP,sprint:!!(inp.keys[save.set.keys.sprint]||inp.tSprint||inp.padSprint)};
+  inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;
+  return I;
+}
+function localHud(p){ // buttons, shot meter and pass marker for the person on this device
+  var hasBall=ball.state==='held'&&ball.holder===p,onO=game.poss===p.team,canD=hasBall&&!p.act&&game.state==='play'&&hoopDist(p)<dunkRange(p);
   if(canD!==dunkOn){dunkOn=canD;$('bDunk').classList[canD?'remove':'add']('off');}
   setLabels(hasBall?'SHOOT':'JUMP',hasBall?'PASS':(onO&&ball.state!=='loose'&&ball.state!=='shot'?'CALL':'STEAL'),
     ball.state==='loose'||ball.state==='shot'?'LOOSE BALL':(onO?'OFFENSE':'DEFENSE'),hasBall?'MOVE':'DASH');
-  var fx=Math.sin(camYaw),fz=Math.cos(camYaw),rx=-fz,rz=fx;
-  var wx=fx*inp.iy+rx*inp.ix,wz=fz*inp.iy+rz*inp.ix;
-  var wantS=!!(inp.keys[save.set.keys.sprint]||inp.tSprint||inp.padSprint);
-  p.sprinting=wantS&&Math.hypot(wx,wz)>0.3&&!p.tired&&!p.act&&p.stun<=0&&game.state==='play';
+  var t=hasBall&&hudTgt>=0?players[hudTgt]:null;ringMate.visible=!!t;if(t)ringMate.position.set(t.x,0.03,t.z);
+  var m=p.act==='shoot'&&!p.released&&p.jK&&game.state==='play';$('meter').style.display=m?'block':'none';if(m)$('mfill').style.width=Math.min(100,p.actT/p.jK.dur*100)+'%';
+}
+function humanThink(p,I,dt){ // one real player's input, whether it came from this device or over the network
+  p.faceTo=null;p.callT-=dt;p.stealCd-=dt;
+  var hasBall=ball.state==='held'&&ball.holder===p,onO=game.poss===p.team;
+  var canD=hasBall&&!p.act&&game.state==='play'&&hoopDist(p)<dunkRange(p);
+  var wx=+I.wx||0,wz=+I.wz||0,wl=Math.hypot(wx,wz);if(wl>1){wx/=wl;wz/=wl;}
+  var fx=Math.sin(+I.yaw||0),fz=Math.cos(+I.yaw||0),rx=-fz,rz=fx;
+  p.sprinting=!!I.sprint&&Math.hypot(wx,wz)>0.3&&!p.tired&&!p.act&&p.stun<=0&&game.state==='play';
   if(p.sprinting){p.stam=Math.max(0,p.stam-dt*0.1);p.stamCd=0.7;if(p.stam<=0)p.tired=true;}
   else{p.stamCd-=dt;if(p.stamCd<=0)p.stam=Math.min(1,p.stam+dt*0.2);if(p.tired&&p.stam>=0.3)p.tired=false;}
-  // pass target preview
-  var tgt=null;
-  if(hasBall){var bs=-9;mates(p).forEach(function(m){var dx=m.x-p.x,dz=m.z-p.z,l=Math.hypot(dx,dz)||1;
-    var s=(inp.ix||inp.iy)?(dx*wx+dz*wz)/l:(dx*fx+dz*fz)/l-l*0.02;if(s>bs){bs=s;tgt=m;}});}
-  ringMate.visible=!!tgt;if(tgt)ringMate.position.set(tgt.x,0.03,tgt.z);
-  if(game.state!=='play'){p.wx=p.wz=0;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;$('meter').style.display='none';return;}
+  var tgt=(I.tgt>=0&&I.tgt<6)?players[I.tgt|0]:null;if(tgt&&(tgt.team!==p.team||tgt===p))tgt=null;
+  if(game.state!=='play'){p.wx=p.wz=0;return;}
   if(p.act==='shoot'&&!p.released){
-    $('meter').style.display='block';$('mfill').style.width=Math.min(100,p.actT/p.jK.dur*100)+'%';
-    if(inp.shootR||!inp.shoot)p.relQ=true;
-    if(inp.passP&&tgt){doPass(p,tgt);}
+    if(I.shootR||!I.shoot)p.relQ=true;
+    if(I.passP&&tgt){doPass(p,tgt);}
     else if((p.relQ&&p.actT>=0.12)||p.actT>=p.jK.dur)releaseShot(p);
-  }else $('meter').style.display='none';
-  if(p.act||p.stun>0){p.wx=p.wz=0;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;return;}
-  var sp=p.spd*(hasBall?0.9:1)*(p.sprinting?1.32:1)*(p.tired?0.62:1);p.wx=wx*sp;p.wz=wz*sp;
-  if(inp.shootP){
-    if(hasBall)startShot(p);
-    else jump(p);
   }
-  else if(inp.dunkP&&canD)startDunk(p);
-  if(inp.moveP&&p.moveCd<=0&&!p.act){
+  if(p.act||p.stun>0){p.wx=p.wz=0;return;}
+  var sp=p.spd*(hasBall?0.9:1)*(p.sprinting?1.32:1)*(p.tired?0.62:1);p.wx=wx*sp;p.wz=wz*sp;
+  if(I.shootP){if(hasBall)startShot(p);else jump(p);}
+  else if(I.dunkP&&canD)startDunk(p);
+  if(I.moveP&&p.moveCd<=0&&!p.act){
+    var slot=I.slot,ds=!!I.flick;
     if(hasBall){
-      var ds=inp.dribSlot,slot=ds||((Math.abs(inp.ix)>0.45&&Math.abs(inp.ix)>=Math.abs(inp.iy)*0.8)?(inp.ix>0?'r':'l'):inp.iy<-0.45?'b':inp.iy>0.45?'f':'n');
-      var DRu=BYID[save.eq.drs[slot]]||BYID.dr0,sd=slot==='r'?1:-1;
+      var DRu=(p.load&&p.load.drs[slot])||BYID.dr0,sd=slot==='r'?1:-1;
       if(slot==='l'||slot==='r')dribMove(p,'u',rx*sd*0.85+fx*0.55,rz*sd*0.85+fz*0.55,DRu);
       else if(slot==='b')dribMove(p,'u',-Math.sin(p.face),-Math.cos(p.face),DRu);
       else if(slot==='f')dribMove(p,'u',ds?fx:wx,ds?fz:wz,DRu);
       else dribMove(p,'u',Math.sin(p.face),Math.cos(p.face),DRu,true);
-    }else{var dq=inp.dribSlot;if(dq==='f')dribMove(p,'dash',fx,fz);else if(dq==='b')dribMove(p,'dash',-fx,-fz);else if(dq==='l')dribMove(p,'dash',-rx,-rz);else if(dq==='r')dribMove(p,'dash',rx,rz);else dribMove(p,'dash',wx,wz);}
-    inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;return;
+    }else if(ds&&slot==='f')dribMove(p,'dash',fx,fz);else if(ds&&slot==='b')dribMove(p,'dash',-fx,-fz);else if(ds&&slot==='l')dribMove(p,'dash',-rx,-rz);else if(ds&&slot==='r')dribMove(p,'dash',rx,rz);else dribMove(p,'dash',wx,wz);
+    return;
   }
-  if(inp.passP){
+  if(I.passP){
     if(hasBall){if(tgt)doPass(p,tgt);}
-    else if(onO&&(ball.state==='held'||ball.state==='pass')){p.callT=1.5;banner('CALLING FOR IT','',0.5);}
+    else if(onO&&(ball.state==='held'||ball.state==='pass')){p.callT=1.5;sayTo(p,'CALLING FOR IT','',0.5);}
     else if(p.stealCd<=0){
       p.stealCd=0.7;var h=ball.state==='held'?ball.holder:null;
-      if(h&&h.team!==0&&pd(p,h)<1.6&&h.immune<=0&&!h.act&&R()<0.3){giveBall(p);h.stun=0.4;banner('STEAL!','var(--good)',0.8);sfx.steal();}
+      if(h&&h.team!==p.team&&pd(p,h)<1.6&&h.immune<=0&&!h.act&&R()<0.3){giveBall(p);h.stun=0.4;sayAll('STEAL!',p.team,0.8,'steal');}
       else{p.stun=0.28;}
     }
   }
-  inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;
+}
+
+/* ================= ONLINE: up to 3v3 real players, quick match =================
+   No game server. Players connect straight to each other (WebRTC through the PeerJS public broker).
+   One player hosts and runs the match; the others send their inputs and draw what the host reports. */
+var MMROOMS=6,MMPRE='static3v3-mm1-',ZEROI={wx:0,wz:0,yaw:0,shoot:false,shootP:false,shootR:false,passP:false,tgt:-1,moveP:false,slot:'n',flick:false,dunkP:false,sprint:false};
+var net={on:false,role:null,peer:null,hostPeer:null,conn:null,guests:[],searching:false,k:0,cd:-1,started:false,trying:null,tmo:0,snap:null,sendT:0,outT:0,out:null,tick:0};
+var ACTS=[null,'shoot','jump','dunk','fall','drib'],BST=['held','shot','pass','loose'],teamRings=[];
+function r2(v){return Math.round(v*100)/100;}
+function mmStatus(t){$('mmS').textContent=t;}
+function myLoadout(){return {c:save.eq.char,js:save.eq.js,dk:save.eq.dk,drs:save.eq.drs};}
+function mkLoad(l){
+  l=l||{};var d=l.drs||{},o={js:(BYID[l.js]&&BYID[l.js].kind==='js')?BYID[l.js]:JS0,dk:(BYID[l.dk]&&BYID[l.dk].kind==='dk')?BYID[l.dk]:DK0,drs:{}};
+  ['f','l','r','b','n'].forEach(function(k){o.drs[k]=(BYID[d[k]]&&BYID[d[k]].kind==='dr')?BYID[d[k]]:BYID.dr0;});
+  return o;
+}
+function setLook(p,L,j,s,nc){var b=buildHuman(L,j,s,nc);scene.remove(p.g);p.g=b.g;p.j=b.j;p.phys=b.phys;p.L=L;p.h=L.h;p.shot=L.shot||1;p.dunkR=L.dunkR||3.3;p.an=null;}
+function defaultLook(p){var L=p.L0;setLook(p,L,p.team===0?HOME:AWAY,p.team===0?0x1d1d2b:0xf4f4f4,p.team===0?'#14121c':'#fff6e3');}
+function sayAll(txt,team,dur,snd){ // a call everyone sees, coloured by whose side it favours
+  banner(txt,team===-2?'':(team===user.team?'var(--good)':'var(--hot)'),dur||0.9);if(snd&&sfx[snd])sfx[snd]();
+  if(net.on&&net.role==='host')netCast({t:'e',k:'msg',txt:txt,team:team,dur:dur||0.9,snd:snd||''});
+}
+function sndAll(n){if(sfx[n])sfx[n]();if(net.on&&net.role==='host')netCast({t:'e',k:'sfx',n:n});}
+function scoreBanner(team){
+  var mine=team===user.team;
+  banner(ball.dunk?(mine?(ball.dunkName||'SLAM')+'! +2':'DUNKED ON +2'):(ball.pts===3?(mine?'FROM DEEP! +3':'THEY HIT A 3'):(mine?'BUCKET! +2':'THEY SCORE +2')),mine?'var(--good)':'var(--hot)',1.4);
+}
+function ballVisual(dt){
+  var b=ball,sp=b.vel.length();b.spin+=dt*(b.state==='held'?6:8+sp);ballMesh.rotation.x=b.spin;ballMesh.rotation.z=b.spin*0.3;ballMesh.position.copy(b.pos);
+  ballShadow.position.set(b.pos.x,0.026,b.pos.z);var sc=Math.max(0.2,0.42-b.pos.y*0.04);ballShadow.scale.set(sc,sc,sc);
+}
+function sayTo(p,txt,col,dur){ // a call only one player sees
+  if(p===user)banner(txt,col,dur);else if(p.net)netSend(p.net,{t:'e',k:'you',txt:txt,col:col,dur:dur});
+}
+function netSend(c,o){try{if(c&&c.open!==false)c.send(o);}catch(e){}}
+function netCast(o){for(var i=0;i<net.guests.length;i++)netSend(net.guests[i].c,o);}
+function loadPeer(cb){
+  if(window.Peer){cb(true);return;}
+  try{var s=document.createElement('script');s.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';s.onload=function(){cb(!!window.Peer);};s.onerror=function(){cb(false);};document.head.appendChild(s);}catch(e){cb(false);}
+}
+function mmFail(t){mmStop();$('mm').style.display='flex';mmStatus(t);}
+function mmStop(){
+  net.searching=false;net.started=false;clearTimeout(net.tmo);clearInterval(net.tick);net.tick=0;
+  try{if(net.conn)net.conn.close();}catch(e){}
+  net.guests.forEach(function(g){try{g.c.close();}catch(e){}});
+  try{if(net.hostPeer)net.hostPeer.destroy();}catch(e){}try{if(net.peer)net.peer.destroy();}catch(e){}
+  net.peer=net.hostPeer=net.conn=net.trying=null;net.guests=[];net.role=null;net.cd=-1;net.snap=null;
+}
+function mmOpen(){
+  if(net.searching||net.on)return;
+  $('mm').style.display='flex';$('mmStart').style.display='none';mmStatus('Connecting');
+  if(typeof RTCPeerConnection==='undefined'&&!window.Peer){mmStatus('Online play is not available where the game is open right now. Open the game from its own web address in a browser.');return;}
+  net.searching=true;
+  loadPeer(function(ok){
+    if(!net.searching)return;
+    if(!ok){mmFail('Could not reach the online service. Check your connection and try again.');return;}
+    try{net.peer=new window.Peer();}catch(e){mmFail('Could not start online play on this device.');return;}
+    net.peer.on('open',function(){net.k=0;mmTry();});
+    net.peer.on('error',function(err){
+      var ty=err&&err.type;
+      if(ty==='peer-unavailable'){mmHost();}
+      else if(net.searching&&!net.on&&!net.hostPeer&&!net.conn)mmFail('The online service is not answering. Try again in a moment.');
+    });
+    net.peer.on('disconnected',function(){try{if(net.peer&&!net.peer.destroyed)net.peer.reconnect();}catch(e){}});
+  });
+}
+function lobbyText(n,cd){return n<2?'Looking for players. You are the only one here so far.':(n+' of 6 players here.'+(cd>0?' Match starts in '+Math.ceil(cd)+'. Empty spots are filled by the CPU.':''));}
+function mmTry(){ // is somebody already waiting in room k?
+  if(!net.searching||net.conn||net.hostPeer)return;
+  var c,got=false;mmStatus('Looking for players');
+  try{c=net.peer.connect(MMPRE+(net.k+1),{reliable:true,serialization:'json'});}catch(e){mmNext();return;}
+  net.trying=c;clearTimeout(net.tmo);
+  net.tmo=setTimeout(function(){if(net.trying===c&&!got){try{c.close();}catch(e){}mmNext();}},7000);
+  c.on('open',function(){netSend(c,{t:'join',load:myLoadout()});});
+  c.on('data',function(d){
+    if(!d)return;
+    if(d.t==='busy'){got=true;clearTimeout(net.tmo);try{c.close();}catch(e){}if(net.trying===c)mmNext();return;}
+    if(d.t==='lobby'){got=true;clearTimeout(net.tmo);net.conn=c;net.role='guest';mmStatus(lobbyText(d.n,d.cd));return;}
+    if(net.conn===c)guestData(d);
+  });
+  c.on('close',function(){
+    if(net.conn!==c)return;
+    net.conn=null;
+    if(net.on)netDropped('The host left the match.');
+    else if(net.searching){net.role=null;setTimeout(mmTry,400);}
+  });
+}
+function mmNext(){net.trying=null;net.k=(net.k+1)%MMROOMS;setTimeout(mmTry,net.k===0?1500:120);}
+function mmHost(){ // nobody is waiting in room k, so wait there ourselves
+  if(!net.searching||net.hostPeer||net.conn)return;
+  clearTimeout(net.tmo);net.trying=null;var hp;
+  try{hp=new window.Peer(MMPRE+(net.k+1));}catch(e){mmNext();return;}
+  hp.on('open',function(){
+    if(!net.searching||net.conn){try{hp.destroy();}catch(e){}return;}
+    net.hostPeer=hp;net.role='host';net.guests=[];net.cd=-1;net.started=false;mmLobby();
+    clearInterval(net.tick);net.tick=setInterval(function(){
+      if(net.role!=='host'||net.started||net.cd<=0)return;
+      var b=Math.ceil(net.cd);net.cd-=0.25;if(net.cd<=0)netStart();else if(Math.ceil(net.cd)!==b)mmLobby();
+    },250);
+  });
+  hp.on('error',function(err){
+    if(err&&err.type==='unavailable-id'){try{hp.destroy();}catch(e){}if(net.hostPeer===hp)net.hostPeer=null;setTimeout(mmTry,200+R()*400);}
+  });
+  hp.on('connection',hostConn);
+}
+function hostConn(c){
+  c.on('data',function(d){
+    if(!d)return;var i,g=null;for(i=0;i<net.guests.length;i++)if(net.guests[i].c===c)g=net.guests[i];
+    if(d.t==='join'&&!g){
+      if(net.started||net.guests.length>=5){netSend(c,{t:'busy'});setTimeout(function(){try{c.close();}catch(e){}},500);return;}
+      net.guests.push({c:c,load:d.load||{},slot:-1,p:null});
+      net.cd=net.guests.length===1?10:Math.max(net.cd,5);mmLobby();
+      if(net.guests.length>=5)netStart();
+      return;
+    }
+    if(d.t==='i'&&g&&g.p&&d.I){ // keep presses that have not been used yet
+      var o=g.p.I,n=d.I;
+      if(o){n.shootP=n.shootP||o.shootP;n.shootR=n.shootR||o.shootR;n.passP=n.passP||o.passP;n.dunkP=n.dunkP||o.dunkP;if(o.moveP&&!n.moveP){n.moveP=true;n.slot=o.slot;n.flick=o.flick;}}
+      g.p.I=n;
+    }
+  });
+  c.on('close',function(){
+    for(var i=0;i<net.guests.length;i++)if(net.guests[i].c===c){
+      var g=net.guests[i];
+      if(net.started){if(g.p){g.p.net=null;g.p.human=false;g.p.I=null;sayAll('A PLAYER LEFT. CPU TAKES OVER',-2,1.4);}g.c=null;}
+      else{net.guests.splice(i,1);if(!net.guests.length)net.cd=-1;mmLobby();}
+      return;
+    }
+  });
+}
+function mmLobby(){
+  var n=1+net.guests.length;mmStatus(lobbyText(n,net.cd));$('mmStart').style.display=n>=2?'':'none';
+  netCast({t:'lobby',n:n,cd:net.cd});
+}
+function netStart(){
+  if(net.role!=='host'||net.started)return;
+  net.started=true;clearInterval(net.tick);net.tick=0;
+  var order=[0,3,1,4,2,5],list=[null,null,null,null,null,null];
+  list[0]={load:myLoadout()};
+  net.guests.forEach(function(g,i){g.slot=order[i+1];list[g.slot]={load:g.load};});
+  net.guests.forEach(function(g){netSend(g.c,{t:'start',list:list,you:g.slot,win:15});});
+  netBegin(list,0,15);
+}
+function netBegin(list,me,win){
+  net.on=true;net.searching=false;net.snap=null;net.out=null;$('mm').style.display='none';if(!net.win0)net.win0=WIN;WIN=win||15;
+  players.forEach(function(p,s){
+    var r=list[s];p.net=null;p.I=null;p.isUser=s===me;p.stam=1;p.tired=false;p.stamCd=0;
+    if(r){var L=BYID[r.load&&r.load.c];if(!L||L.kind!=='char')L=CHARS[0];setLook(p,L,L.j,L.s,L.nc);p.human=true;p.load=mkLoad(r.load);p.spd=L.spd;}
+    else{defaultLook(p);p.human=false;p.load=null;p.shot=1;p.spd=p.team===0?(p.L.spd||5.4)-0.45:4.85+p.idx*0.1;}
+  });
+  user=players[me];
+  if(net.role==='host')net.guests.forEach(function(g){g.p=players[g.slot];g.p.net=g.c;});
+  if(!teamRings.length)for(var i=0;i<6;i++){var tr=ring(i<3?HOME:AWAY);tr.scale.setScalar(0.72);teamRings.push(tr);}
+  paused=false;$('pause').style.display='none';openSheet('');startAudio();document.body.classList.remove('lobby');$('lobby').style.display='none';$('over').style.display='none';
+  $('sLblH').textContent=user.team===0?'YOU':'THEM';$('sLblA').textContent=user.team===1?'YOU':'THEM';
+  inp.shoot=inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;inp.tSprint=false;
+  game.score=[0,0];hudScore();game.lastScorer=-1;game.time=0;
+  if(net.role==='host'){setupInbound(0);updateCamera(0.016,true);sayAll('FIRST TO '+WIN,user.team,1.6);}
+  else{players.forEach(function(p,s){var a=[[0,-11.5],[-4.6,-5.5],[4.6,-5.5],[0,-6.2],[-4.2,-1.5],[4.2,-1.5]][s];p.x=a[0];p.z=a[1];p.y=0;p.vx=p.vz=0;p.act=null;p.stun=0;});
+    ball.state='held';ball.holder=players[0];ball.dead=false;game.poss=0;game.clock=24;game.state='play';camYaw=camTargetYaw();updateCamera(0.016,true);}
+}
+function netLeave(){ // back to playing on your own
+  var was=net.on;net.on=false;mmStop();$('mm').style.display='none';
+  teamRings.forEach(function(t){t.visible=false;});
+  if(!was)return;
+  if(net.win0){WIN=net.win0;net.win0=0;}
+  user=players[0];
+  players.forEach(function(p){p.isUser=p===user;p.human=p===user;p.net=null;p.I=null;p.load=null;if(p!==user)defaultLook(p);});
+  rebuildUser();applySettings();$('sLblH').textContent='YOU';$('sLblA').textContent='CPU';$('again').style.display='';
+}
+function netDropped(msg){
+  if(!net.on)return;
+  netLeave();showLobby();try{toast(msg);}catch(e){}
+}
+function mkSnap(){
+  return {t:'s',g:[game.state,game.score[0],game.score[1],r2(game.clock),game.poss,game.lastScorer],
+    b:[BST.indexOf(ball.state),r2(ball.pos.x),r2(ball.pos.y),r2(ball.pos.z),ball.holder?players.indexOf(ball.holder):-1,r2(ball.vel.x),r2(ball.vel.y),r2(ball.vel.z),ball.dead?1:0],
+    p:players.map(function(p){return [r2(p.x),r2(p.z),r2(p.y),r2(p.face),r2(p.vx),r2(p.vz),ACTS.indexOf(p.act),r2(p.actT),(p.released?1:0)|(p.hand>0?2:0)|(p.tired?4:0)|(p.human?8:0),
+      r2(Math.max(0,p.stun)),r2(Math.max(0,p.passAnim)),r2(p.dp%(PI*2)),p.jK?MOVES.indexOf(p.jK):-1,p.dkK?MOVES.indexOf(p.dkK):-1,p.mvType||'',p.mvPath||'',r2(p.mvT),r2(p.stam),r2(Math.max(0,p.callT))];})};
+}
+function hostTick(dt){ // tell the guests where everything is, 20 times a second
+  net.sendT-=dt;if(net.sendT>0)return;net.sendT=0.05;
+  var s=mkSnap();netCast(s);
+}
+function guestData(d){
+  if(d.t==='lobby'){if(!net.on)mmStatus(lobbyText(d.n,d.cd));}
+  else if(d.t==='start'){netBegin(d.list,d.you,d.win);}
+  else if(d.t==='s'){d.at=performance.now();net.snap=d;}
+  else if(d.t==='e'){
+    if(d.k==='msg'){banner(d.txt,d.team===-2?'':(d.team===user.team?'var(--good)':'var(--hot)'),d.dur||0.9);if(d.snd&&sfx[d.snd])sfx[d.snd]();}
+    else if(d.k==='you')banner(d.txt,d.col||'',d.dur||0.7);
+    else if(d.k==='score'){ball.pts=d.pts;ball.dunk=!!d.dunk;ball.dunkName=d.name;scoreBanner(d.team);sfx.swish();sfx.score();}
+    else if(d.k==='sfx'&&sfx[d.n])sfx[d.n]();
+  }
+}
+function guestSend(I,dt){ // hold on to button presses until they have gone out
+  var o=net.out;
+  if(o){I.shootP=I.shootP||o.shootP;I.shootR=I.shootR||o.shootR;I.passP=I.passP||o.passP;I.dunkP=I.dunkP||o.dunkP;if(o.moveP&&!I.moveP){I.moveP=true;I.slot=o.slot;I.flick=o.flick;}}
+  net.out=I;net.outT-=dt;
+  if(net.outT>0&&!(I.shootP||I.shootR||I.passP||I.dunkP||I.moveP))return;
+  net.outT=0.033;I.wx=r2(I.wx);I.wz=r2(I.wz);I.yaw=r2(I.yaw);netSend(net.conn,{t:'i',I:I});net.out=null;
+}
+function guestApply(dt){
+  var S=net.snap;if(!S)return;
+  var el=Math.min(0.15,(performance.now()-S.at)/1000),k=Math.min(1,dt*16),i,a,p,st=S.g[0];
+  if(game.score[0]!==S.g[1]||game.score[1]!==S.g[2]){game.score[0]=S.g[1];game.score[1]=S.g[2];hudScore();}
+  game.clock=S.g[3];game.poss=S.g[4];game.lastScorer=S.g[5];
+  for(i=0;i<6;i++){
+    a=S.p[i];p=players[i];var tx=a[0]+a[4]*el,tz=a[1]+a[5]*el;
+    if(Math.hypot(tx-p.x,tz-p.z)>4){p.x=tx;p.z=tz;}else{p.x+=(tx-p.x)*k;p.z+=(tz-p.z)*k;}
+    p.y+=(a[2]-p.y)*Math.min(1,dt*25);if(a[2]===0&&p.y<0.03)p.y=0;
+    p.face=angLerp(p.face,a[3],Math.min(1,dt*18));p.vx=a[4];p.vz=a[5];
+    p.act=ACTS[a[6]]||null;p.actT=a[7]+el;p.released=!!(a[8]&1);p.hand=(a[8]&2)?1:-1;p.tired=!!(a[8]&4);p.human=!!(a[8]&8);
+    p.stun=a[9];p.passAnim=a[10];p.dp=a[11];p.jK=a[12]>=0?MOVES[a[12]]:null;p.dkK=a[13]>=0?MOVES[a[13]]:null;p.mvType=a[14];p.mvPath=a[15];p.mvT=a[16]||0.3;p.stam=a[17];p.callT=a[18];
+  }
+  var b=S.b,bx=b[1],by=b[2],bz=b[3];
+  ball.state=BST[b[0]]||'loose';ball.holder=b[4]>=0?players[b[4]]:null;ball.dead=!!b[8];ball.vel.set(b[5],b[6],b[7]);
+  if(ball.state==='loose'){bx+=b[5]*el;by=Math.max(0.12,by+b[6]*el);bz+=b[7]*el;}
+  var kb=Math.min(1,dt*(ball.state==='held'?30:22));
+  if(Math.hypot(bx-ball.pos.x,bz-ball.pos.z)>3)ball.pos.set(bx,by,bz);
+  else{ball.pos.x+=(bx-ball.pos.x)*kb;ball.pos.y+=(by-ball.pos.y)*kb;ball.pos.z+=(bz-ball.pos.z)*kb;}
+  if(st==='over'){if(game.state!=='over')endGame();}else game.state=st;
+}
+function netRings(){
+  for(var i=0;i<teamRings.length;i++){var p=players[i];teamRings[i].visible=net.on&&p!==user;teamRings[i].position.set(p.x,0.028,p.z);}
 }
 
 /* ---------- physics ---------- */
@@ -1143,7 +1379,7 @@ function movePlayer(p,dt){
     p.vx+=(p.wx-p.vx)*kk;p.vz+=(p.wz-p.vz)*kk;
     p.x+=p.vx*dt;p.z+=p.vz*dt;
     if(p.act==='shoot'&&p.y>0){p.x+=p.jdx*dt;p.z+=p.jdz*dt;}
-    if(p.act==='shoot'&&!p.isUser&&!p.released&&hasBall&&p.actT>=p.aiRel)releaseShot(p);
+    if(p.act==='shoot'&&!p.human&&!p.released&&hasBall&&p.actT>=p.aiRel)releaseShot(p);
     if(p.y>0||p.vy>0){p.y+=p.vy*dt;p.vy-=10.5*dt;
       if(p.y<=0){p.y=0;p.vy=0;
         if(p.act==='shoot'&&!p.released&&hasBall)releaseShot(p);
@@ -1202,7 +1438,7 @@ function updateBall(dt){
     b.pos.y=b.p0.y+(b.p1.y-b.p0.y)*s+b.arc*4*s*(1-s);
     if(s>=1){
       if(b.made){b.pos.set(b.p1.x,RIMY,b.p1.z);scored(b.shooter.team);}
-      else{kickNet(b.p1.z>0?0:1,0.04);var sg=Math.sign(b.p1.z),a=R()*PI*2,v=1.2+R()*2.4;looseBall(Math.cos(a)*v,2.4+R()*2.4,-sg*Math.abs(Math.sin(a)*v)-sg*0.8,0.3);sfx.rim();}
+      else{kickNet(b.p1.z>0?0:1,0.04);var sg=Math.sign(b.p1.z),a=R()*PI*2,v=1.2+R()*2.4;looseBall(Math.cos(a)*v,2.4+R()*2.4,-sg*Math.abs(Math.sin(a)*v)-sg*0.8,0.3);sndAll('rim');}
     }
   }else if(b.state==='pass'){
     b.t+=dt;s=Math.min(1,b.t/b.T);
@@ -1211,7 +1447,7 @@ function updateBall(dt){
     var os=opps(b.passFrom.team);
     for(i=0;i<os.length;i++){var o=os[i];
       if(s>0.15&&s<0.95&&b.tried.indexOf(o)<0&&o.stun<=0&&hd(o.x,o.z,b.pos.x,b.pos.z)<0.8){b.tried.push(o);
-        if(R()<(o.isUser?0.85:0.3)){giveBall(o);banner(o.isUser?'PICKED OFF!':'INTERCEPTED',o.team===0?'var(--good)':'var(--hot)',0.9);sfx.steal();return;}}}
+        if(R()<(o.human?0.85:0.3)){giveBall(o);sayAll('PICKED OFF!',o.team,0.9,'steal');return;}}}
     if(s>=1){var m=b.passTo;
       if(hd(m.x,m.z,b.p1.x,b.p1.z)<2.2&&m.stun<=0)giveBall(m);
       else{var dx=b.p1.x-b.p0.x,dz=b.p1.z-b.p0.z,l=Math.hypot(dx,dz)||1;looseBall(dx/l*7,0.5,dz/l*7,0.05);}}
@@ -1226,7 +1462,7 @@ function updateBall(dt){
       for(i=0;i<players.length;i++){p=players[i];if(p.stun>0||p.act==='dunk'||p.act==='fall')continue;
         var d=hd(p.x,p.z,b.pos.x,b.pos.z);
         if(d<bd&&b.pos.y<2.3*p.h+p.y+0.1&&b.pos.y>p.y-0.3){bd=d;best=p;}}
-      if(best){giveBall(best);if(best.isUser&&b.pos.y>1.6)banner('BOARD!','var(--good)',0.6);}
+      if(best){giveBall(best);if(best.human&&b.pos.y>1.6)sayTo(best,'BOARD!','var(--good)',0.6);}
     }
   }
   var sp=b.vel.length();b.spin+=dt*(b.state==='held'?6:8+sp);ballMesh.rotation.x=b.spin;ballMesh.rotation.z=b.spin*0.3;
@@ -1374,7 +1610,7 @@ function animate(p,dt){
     if(ball.state==='pass'&&ball.passTo===p){                              // hands out to meet the pass
       crouch=0.18;o.sLx=o.sRx=-1.35;o.eL=o.eR=-0.5;o.sLz=0.2;o.sRz=-0.2;
       if(Math.hypot(lx,lz,ball.pos.y-(p.y+1.4*p.h))<1.2){ikL=[0.1,0,0];ikR=[-0.1,0,0];}
-    }else if((p.isUser&&p.callT>0)||(!p.isUser&&idle>0.6&&Math.sin(t*0.9)>0.8)){
+    }else if((p.human&&p.callT>0)||(!p.human&&idle>0.6&&Math.sin(t*0.9)>0.8)){
       o.sRx=-2.9+Math.sin(t*9)*0.15;o.eR=-0.2;o.sRz=-0.25;                 // hand up, calling for it
     }else{
       o.sLx=o.sLx*(1-idle)-0.75*idle;o.sRx=o.sRx*(1-idle)-0.75*idle;o.eL=o.eL*(1-idle)-1.35*idle;o.eR=o.eR*(1-idle)-1.35*idle;
@@ -1409,9 +1645,9 @@ function animate(p,dt){
 
 /* ---------- camera ---------- */
 function camTargetYaw(){
-  var u=user,hz=atkZ(0),tx,tz,l;
+  var u=user,hz=atkZ(u.team),tx,tz,l;
   if(ball.state==='held'&&ball.holder===u){tx=-u.x;tz=hz-u.z;if(Math.hypot(tx,tz)<2.6)return camYaw;}
-  else if(game.poss===0&&(ball.state==='held'||ball.state==='pass')){
+  else if(game.poss===u.team&&(ball.state==='held'||ball.state==='pass')){
     var ax=-u.x,az=hz-u.z;l=Math.hypot(ax,az)||1;ax/=l;az/=l;
     var bx=ball.pos.x-u.x,bz=ball.pos.z-u.z;l=Math.hypot(bx,bz);if(l>0.6){bx/=l;bz/=l;}else{bx=ax;bz=az;}
     tx=ax*0.6+bx*0.4;tz=az*0.6+bz*0.4;if(Math.hypot(tx,tz)<0.25){tx=ax;tz=az;}
@@ -1436,6 +1672,7 @@ var paused=false,inPauseSet=false;
 function clearInput(){inp.shoot=inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=inp.pauseP=false;inp.tSprint=false;inp.keys={};inp.sx=inp.sy=0;}
 function setPause(on){
   if(on&&game.state!=='play'&&game.state!=='dead')return;
+  if(net.on){$('pause').style.display=on?'flex':'none';clearInput();return;}   // an online match cannot be frozen
   paused=on;$('pause').style.display=on?'flex':'none';clearInput();
 }
 function pauseSettings(){$('pause').style.display='none';inPauseSet=true;document.body.classList.add('pauseset');$('lobby').style.display='block';openSheet('settings');}
@@ -1453,7 +1690,7 @@ function update(dt){
   if(game.state==='menu'||game.state==='over'){
     var pst=pollPad();inp.pauseP=false;inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;inp.shoot=false;
     if(pst&&titleOn){closeTitle();return;}
-    if(pst&&!layEdit&&(game.state==='over'||sheetOpen==='')){begin();return;}
+    if(pst&&!layEdit&&!net.on&&!net.searching&&(game.state==='over'||sheetOpen==='')){begin();return;}
     if(game.state==='menu'){
       var port=window.innerWidth<window.innerHeight,so=sheetOpen==='baller',la=Math.sin(game.time*0.5)*(so?0.15:0.45),ld=port?(so?5.2:4.0):3.1,lk=Math.min(1,dt*4),th=Math.tan(camera.fov*PI/360);
       camPos.x+=(user.x+Math.sin(la)*ld-camPos.x)*lk;camPos.y+=(1.5-camPos.y)*lk;camPos.z+=(user.z+Math.cos(la)*ld-camPos.z)*lk;
@@ -1465,29 +1702,39 @@ function update(dt){
   }
   readStick();
   if(inp.pauseP){inp.pauseP=false;setPause(true);return;}
-  var i,p;
-  for(i=0;i<players.length;i++){p=players[i];if(p.isUser)userThink(p,dt);else aiThink(p,dt);}
-  for(i=0;i<players.length;i++)movePlayer(players[i],dt);
-  separate();
-  updateBall(dt);
-  if(game.state==='play'){
-    if(ball.state==='held'||ball.state==='pass'){
-      game.clock-=dt;
-      if(game.clock<=0){game.clock=0;sfx.buzz();banner('SHOT CLOCK!','var(--hot)',1.1);var t=game.poss;
-        players.forEach(function(q){if(q.act==='shoot')q.act='fall';});
-        ball.dead=true;looseBall(0,1,0,9);game.lastScorer=-1;game.state='dead';game.deadT=1.3;game.next=1-t;}
+  var i,p,guest=net.on&&net.role==='guest';
+  if(guest){guestSend(localInput(user),dt);guestApply(dt);ballVisual(dt);if(game.state==='over')return;}
+  else{
+    for(i=0;i<players.length;i++){
+      p=players[i];
+      if(p.isUser)humanThink(p,localInput(p),dt);
+      else if(p.human&&p.net){humanThink(p,p.I||ZEROI,dt);if(p.I){p.I.shootP=p.I.shootR=p.I.passP=p.I.moveP=p.I.dunkP=false;}}
+      else aiThink(p,dt);
     }
-  }else if(game.state==='dead'){
-    game.deadT-=dt;
-    if(game.deadT<=0){
-      if(game.score[0]>=WIN||game.score[1]>=WIN)endGame();else setupInbound(game.next);
+    for(i=0;i<players.length;i++)movePlayer(players[i],dt);
+    separate();
+    updateBall(dt);
+    if(game.state==='play'){
+      if(ball.state==='held'||ball.state==='pass'){
+        game.clock-=dt;
+        if(game.clock<=0){game.clock=0;sayAll('SHOT CLOCK!',-1,1.1,'buzz');var t=game.poss;
+          players.forEach(function(q){if(q.act==='shoot')q.act='fall';});
+          ball.dead=true;looseBall(0,1,0,9);game.lastScorer=-1;game.state='dead';game.deadT=1.3;game.next=1-t;}
+      }
+    }else if(game.state==='dead'){
+      game.deadT-=dt;
+      if(game.deadT<=0){
+        if(game.score[0]>=WIN||game.score[1]>=WIN)endGame();else setupInbound(game.next);
+      }
     }
   }
+  localHud(user);
   var cs=Math.ceil(game.clock),ce=$('clk');if(ce.textContent!==String(cs)){ce.textContent=cs;ce.className=cs<=5?'low':'';}
   for(i=0;i<players.length;i++)animate(players[i],dt);
   ringMe.position.set(user.x,0.03,user.z);
   updateStamBar();updateSweat(dt);
-  var man=players[3],showMan=game.state==='play'&&game.poss===1;ringMan.visible=showMan;if(showMan)ringMan.position.set(man.x,0.03,man.z);
+  var man=players[(1-user.team)*3+user.idx],showMan=game.state==='play'&&game.poss===1-user.team;ringMan.visible=showMan;if(showMan)ringMan.position.set(man.x,0.03,man.z);
+  if(net.on){netRings();if(net.role==='host')hostTick(dt);}
   updateCamera(dt,false);
 }
 function updateBallIdle(dt){
@@ -1495,10 +1742,11 @@ function updateBallIdle(dt){
   ballMesh.position.copy(ball.pos);ballShadow.position.set(ball.pos.x,0.026,ball.pos.z);
 }
 function endGame(){
-  game.state='over';var w=game.score[0]>game.score[1];
-  $('oT').textContent=w?'YOU RUN THIS COURT':'CPU TAKES IT';
-  var earn=Math.round((game.score[0]*10+(w?150:50))*[0.75,1,1.5][DIFF]);save.coins+=earn;persist();
-  $('oS').textContent='Final: You '+game.score[0]+', CPU '+game.score[1]+'. You earned '+earn+' coins for the gacha.';
+  game.state='over';var ut=user.team,w=game.score[ut]>game.score[1-ut];
+  $('oT').textContent=w?'YOU RUN THIS COURT':(net.on?'THEY TAKE IT':'CPU TAKES IT');$('again').style.display=net.on?'none':'';
+  if(net.on&&net.role==='host'){netCast(mkSnap());}
+  var earn=Math.round((game.score[ut]*10+(w?150:50))*(net.on?1.5:[0.75,1,1.5][DIFF]));save.coins+=earn;persist();
+  $('oS').textContent='Final: You '+game.score[ut]+', '+(net.on?'them ':'CPU ')+game.score[1-ut]+'. You earned '+earn+' coins for the gacha.';
   $('over').style.display='flex';$('meter').style.display='none';
 }
 function newGame(){
@@ -1598,7 +1846,7 @@ try{sv=JSON.parse(localStorage.getItem('blacktop3v3_v2')||'null');
     else if(has(sv.eq.dr)&&sv.eq.dr!=='dr0'){save.eq.drs.l=save.eq.drs.r=sv.eq.dr;}
   }}catch(e){}
 function mv(k){return BYID[save.eq[k]]||BYID[k+'0'];}
-function dunkRange(p){return p.dunkR+(p.isUser?mv('dk').range:0);}
+function dunkRange(p){return p.dunkR+(p.load?p.load.dk.range:0);}
 function owns(x){return (x.kind==='char'?save.chars:save.moves).indexOf(x.id)>=0;}
 var DEFSET={padStyle:'auto',fps:60,q:'high',ctl:isTouch?'mobile':'kbm',keys:{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD',shoot:'Space',pass:'KeyF',move:'ShiftLeft',dunk:'KeyE',sprint:'KeyQ'},
   pad:{shoot:0,pass:2,move:1,dunk:3,sprint:7},lay:{size:1,hand:'r',pos:{}}};
@@ -1709,7 +1957,7 @@ setInterval(function(){
 function persist(){try{localStorage.setItem('blacktop3v3_v2',JSON.stringify(save));}catch(e){}}
 function rebuildUser(){
   var L=BYID[save.eq.char]||CHARS[0],b=buildHuman(L,L.j,L.s,L.nc);
-  scene.remove(user.g);user.g=b.g;user.j=b.j;user.phys=b.phys;user.L=L;user.h=L.h;user.shot=L.shot;user.dunkR=L.dunkR;
+  scene.remove(user.g);user.g=b.g;user.j=b.j;user.phys=b.phys;user.L=L;user.h=L.h;user.shot=L.shot;user.dunkR=L.dunkR;user.an=null;user.human=true;user.load=mkLoad(myLoadout());
 }
 var toastT=0,sheetOpen='';
 function toast(t){var e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toastT);toastT=setTimeout(function(){e.classList.remove('on');},1600);}
@@ -1945,19 +2193,22 @@ function applySettings(){
     el.addEventListener('pointerdown',drag);el.addEventListener('pointermove',drag);
   });
   applyPrefs();
-  players.forEach(function(p){p.isUser=p===user;});
+  players.forEach(function(p){p.isUser=p===user;p.human=p===user;});
   rebuildUser();renderLobby();openSheet('');setWin(21);setDiff(1);lobbyPose();buildTitle();camPos.set(0.5,1.6,2);look.set(0,1.1,-2.2);
 })();
-function showLobby(){paused=false;inPauseSet=false;document.body.classList.remove('pauseset');$('pause').style.display='none';renderLobby();openSheet('');game.state='menu';document.body.classList.add('lobby');$('lobby').style.display='block';$('over').style.display='none';$('meter').style.display='none';lobbyPose();}
-function begin(){paused=false;$('pause').style.display='none';openSheet('');startAudio();document.body.classList.remove('lobby');$('lobby').style.display='none';$('over').style.display='none';applySettings();newGame();}
+function showLobby(){if(net.on)netLeave();paused=false;inPauseSet=false;document.body.classList.remove('pauseset');$('pause').style.display='none';renderLobby();openSheet('');game.state='menu';document.body.classList.add('lobby');$('lobby').style.display='block';$('over').style.display='none';$('meter').style.display='none';lobbyPose();}
+function begin(){if(net.on||net.searching)return;user.load=mkLoad(myLoadout());paused=false;$('pause').style.display='none';openSheet('');startAudio();document.body.classList.remove('lobby');$('lobby').style.display='none';$('over').style.display='none';applySettings();newGame();}
 $('play').addEventListener('click',begin);
 $('again').addEventListener('click',begin);
 $('toLobby').addEventListener('click',showLobby);
+$('playOnline').addEventListener('click',mmOpen);
+$('mmCancel').addEventListener('click',function(){mmStop();$('mm').style.display='none';});
+$('mmStart').addEventListener('click',netStart);
 $('bPause').addEventListener('click',function(){setPause(true);});
 $('pResume').addEventListener('click',function(){setPause(false);});
 $('pSettings').addEventListener('click',pauseSettings);
 $('pQuit').addEventListener('click',pauseQuit);
-document.addEventListener('visibilitychange',function(){if(document.hidden&&!paused)setPause(true);});
+document.addEventListener('visibilitychange',function(){if(document.hidden&&!paused&&!net.on)setPause(true);});
 resize();
 var last=performance.now(),lastR=0;
 function frame(now){
@@ -1969,7 +2220,7 @@ function frame(now){
   update(dt);renderer.render(scene,camera);
 }
 requestAnimationFrame(frame);
-window.__game={nets:nets,game:game,players:players,ball:ball,inp:inp,update:update,save:save};
+window.__game={net:net,getUser:function(){return user;},nets:nets,game:game,players:players,ball:ball,inp:inp,update:update,save:save};
 })();
 </script>
 </body>
