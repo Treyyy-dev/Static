@@ -1,5 +1,7 @@
 # Static
 
+<img src="static-icon.png" alt="Static game icon" width="160">
+
 A cel-shaded 3v3 full-court street basketball game that runs in the browser. You control one player from an over-the-shoulder camera; your two teammates and the three opponents play on their own.
 
 ## Play
@@ -11,7 +13,7 @@ To host it, turn on GitHub Pages for this repository (Settings → Pages → dep
 ## What's in it
 
 - Full-court 3v3 in a fenced city court, first to 11, 15 or 21, with three CPU levels
-- A lobby with Home, Baller, Gacha and Settings tabs
+- A 2.5D start screen, then a lobby with Home, Baller, Gacha and Settings tabs
 - Gacha with five banners: 17 anime-style characters, plus jump shots, dribbles and dunks to pull
 - Five dribble slots (stick forward, left, right, back, no stick), a separate dunk button, sprint and stamina
 - Touch, keyboard and mouse, and controller support with rebindable controls and Xbox or PlayStation button names
@@ -22,3 +24,4 @@ Progress (coins, characters, moves and settings) is saved in the browser on the 
 ## Files
 
 - `index.html`: the whole game in one file
+- `static-icon.svg`, `static-icon.png`, `icon-192.png`, `apple-touch-icon.png`: the game icon, used for the browser tab and home-screen shortcut

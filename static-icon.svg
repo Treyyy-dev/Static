@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <clipPath id="tile"><rect x="0" y="0" width="1024" height="1024" rx="224"/></clipPath>
+    <clipPath id="ball"><circle cx="512" cy="548" r="318"/></clipPath>
+    <pattern id="dots" width="44" height="44" patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
+      <circle cx="22" cy="22" r="7" fill="#b79bff"/>
+    </pattern>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="1024" height="1024" fill="#8f5bff"/>
+    <polygon points="0,1024 1024,1024 1024,300 380,1024" fill="#5b34c9"/>
+    <polygon points="0,1024 0,640 250,0 640,0" fill="#a67dff"/>
+    <rect width="1024" height="1024" fill="url(#dots)" opacity=".5"/>
+    <!-- speed streaks -->
+    <g stroke="#14121c" stroke-width="16" stroke-linecap="round" opacity=".28">
+      <path d="M70 250H250M40 340H190M800 770H980M850 860H1000"/>
+    </g>
+    <!-- ball shadow -->
+    <circle cx="536" cy="574" r="330" fill="#14121c" opacity=".45"/>
+    <!-- ball, cel shaded in three flat tones -->
+    <circle cx="512" cy="548" r="318" fill="#f2772b"/>
+    <g clip-path="url(#ball)">
+      <circle cx="610" cy="650" r="330" fill="#c9521a"/>
+      <circle cx="455" cy="490" r="330" fill="#f2772b"/>
+      <ellipse cx="380" cy="400" rx="120" ry="74" transform="rotate(-38 380 400)" fill="#ffa25a"/>
+      <g fill="none" stroke="#14121c" stroke-width="20" stroke-linecap="round">
+        <path d="M512 230C440 420 440 680 512 866"/>
+        <path d="M194 548C400 478 624 478 830 548"/>
+        <path d="M268 330C380 440 380 660 268 770"/>
+        <path d="M756 330C644 440 644 660 756 770"/>
+      </g>
+    </g>
+    <circle cx="512" cy="548" r="318" fill="none" stroke="#14121c" stroke-width="30"/>
+    <!-- static bolt -->
+    <polygon points="634,104 372,556 520,556 392,958 752,452 588,452 730,104" fill="#14121c" transform="translate(20 22)" opacity=".55"/>
+    <polygon points="634,104 372,556 520,556 392,958 752,452 588,452 730,104" fill="#ffe14a" stroke="#14121c" stroke-width="30" stroke-linejoin="round"/>
+    <polygon points="650,140 428,524 560,524 470,810 690,484 546,484 690,140" fill="#fff6c7"/>
+    <polygon points="664,140 600,300 690,140" fill="#ffffff"/>
+    <!-- sparks -->
+    <g fill="#fff6e3" stroke="#14121c" stroke-width="14" stroke-linejoin="round">
+      <path d="M176 150l22 54 54 22-54 22-22 54-22-54-54-22 54-22z"/>
+      <path d="M852 300l15 38 38 15-38 15-15 38-15-38-38-15 38-15z"/>
+      <path d="M210 800l15 38 38 15-38 15-15 38-15-38-38-15 38-15z"/>
+    </g>
+    <g fill="none" stroke="#ffe14a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M96 520l56 22-34 30 60 26" stroke="#14121c" stroke-width="34"/>
+      <path d="M96 520l56 22-34 30 60 26"/>
+      <path d="M930 540l-56 22 34 30-60 26" stroke="#14121c" stroke-width="34"/>
+      <path d="M930 540l-56 22 34 30-60 26"/>
+    </g>
+  </g>
+  <rect x="15" y="15" width="994" height="994" rx="210" fill="none" stroke="#14121c" stroke-width="30"/>
+</svg>
