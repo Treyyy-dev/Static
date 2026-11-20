@@ -180,9 +180,10 @@ function confMsg(m, d) {
     return true;
   }
   if (d.t === 'cleave') { confLeave(m); return true; }
-  if (d.t === 'cdone' || d.t === 'csc') {
+  if (d.t === 'cdone' || d.t === 'csc' || d.t === 'csh') {
     const r = m.conf; if (!r || !r.started) return true;
     if (d.t === 'cdone') { if (!m.cdone) { m.cdone = true; r.members.forEach(x => x.c.send({ t: 'cdone', id: m.cid })); if (r.members.every(x => x.cdone)) confGo(r); } }
+    else if (d.t === 'csh') { if (r.go) r.members.forEach(x => { if (x !== m) x.c.send({ t: 'csh', id: m.cid, m: d.m ? 1 : 0 }); }); }
     else if (r.go) { const n = Math.max(0, Math.min(60, d.n | 0)); r.members.forEach(x => { if (x !== m) x.c.send({ t: 'csc', id: m.cid, n }); }); }
     return true;
   }
