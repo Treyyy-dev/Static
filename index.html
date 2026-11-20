@@ -95,7 +95,7 @@ body.lobby #hud{display:none}
 #pIcon .ico{width:58px;height:58px;line-height:58px;font-size:34px;border:3px solid var(--home)}
 #pIcons .chip .ico{width:46px;height:46px;line-height:46px}
 .frow .ico{width:34px;height:34px;line-height:34px}
-#setup #tabSet{flex:0 0 auto;text-align:left;padding:8px 12px;font-size:16px;white-space:nowrap}
+#setup #tabSet,#setup #openFr{flex:0 0 auto;text-align:left;padding:8px 12px;font-size:16px;white-space:nowrap}
 #setup{width:auto!important;min-width:150px}
 #nav{max-width:calc(100% - 190px);overflow-x:auto;scrollbar-width:none}#nav::-webkit-scrollbar{display:none}
 #nav #openProf{max-width:150px;overflow:hidden;text-overflow:ellipsis;background-size:cover!important}#nav #openProf .ico{width:20px;height:20px;line-height:20px;flex:0 0 auto}
@@ -106,7 +106,7 @@ body.lobby #hud{display:none}
 #chalDot{display:none;width:9px;height:9px;border-radius:50%;background:var(--hot);border:2px solid var(--ink)}#chalDot.on{display:inline-block}
 #gmode{position:absolute;right:16px;bottom:92px;z-index:3;min-width:170px;text-align:center;font-family:var(--display);font-size:15px;padding:7px 14px;background:rgba(20,18,28,.9);color:var(--paper);border:3px solid var(--home)}
 #gmode small{display:block;font:700 10px var(--body);letter-spacing:.16em;opacity:.7}
-#ultPrev{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:3;font-size:14px;padding:8px 14px;background:rgba(20,18,28,.9);color:var(--paper);border:3px solid var(--hot);white-space:nowrap}
+#ultPrev{display:none;position:absolute;left:16px;bottom:14px;z-index:6;font-size:14px;padding:8px 14px;background:rgba(20,18,28,.9);color:var(--paper);border:3px solid var(--hot);white-space:nowrap}
 body.narrow #nav{max-width:calc(100% - 90px)}
 
 .frow{display:flex;align-items:center;gap:6px;padding:2px 0}
@@ -365,13 +365,13 @@ body.pauseset #settings{padding-top:0}
     <button class="tab" id="tabChal" aria-pressed="false">Challenges<i id="chalDot"></i></button>
     <button class="tab" id="tabShop" aria-pressed="false">Gacha</button>
     <button class="tab" id="openProf" aria-label="Game profile"></button>
-    <button class="tab" id="openFr">Friends</button>
   </nav>
   <div id="coins"></div>
   <div id="toast" role="status"></div>
   <div id="inv"><span id="invT"></span><button class="chip" id="invY">Join</button><button class="chip" id="invN">No</button></div>
   <div id="setup">
     <div id="party"></div>
+    <button class="chip" id="openFr">Friends</button>
     <button class="chip" id="tabSet" aria-pressed="false">⚙ Settings</button>
     <p id="rot" style="font-size:13px;opacity:.8"></p>
   </div>
@@ -3535,7 +3535,7 @@ function openSheet(n){
   $('profile').style.display=n==='profile'?'flex':'none';$('friendsPg').style.display=n==='friends'?'flex':'none';
   if(n==='profile')profRender();if(n==='friends'){$('fFound').innerHTML='';chatRender();friendsRender();friendsAsk();}else chatWith='';
   $('settings').style.display=n==='settings'?'flex':'none';$('tabSet').setAttribute('aria-pressed',n==='settings'?'true':'false');keyCap=padCap=null;if(n==='settings')renderSettings();
-  $('setup').style.display=n?'none':'flex';$('play').style.display=n?'none':'';$('gmode').style.display=n?'none':'';$('ultPrev').style.display=n?'none':'';
+  $('setup').style.display=n?'none':'flex';$('play').style.display=n?'none':'';$('gmode').style.display=n?'none':'';$('ultPrev').style.display=n==='baller'?'block':'none';
   $('openProf').setAttribute('aria-pressed',n==='profile'?'true':'false');$('openFr').setAttribute('aria-pressed',n==='friends'?'true':'false');
   $('tabHome').setAttribute('aria-pressed',n===''?'true':'false');
   $('tabBaller').setAttribute('aria-pressed',n==='baller'?'true':'false');$('tabShop').setAttribute('aria-pressed',n==='shop'?'true':'false');
