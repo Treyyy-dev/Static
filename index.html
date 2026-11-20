@@ -74,12 +74,13 @@ body.lobby #hud{display:none}
 #toast.on{opacity:1}
 #setup{position:absolute;left:12px;bottom:12px;width:min(250px,calc(var(--vw)*56));max-height:70%;overflow-y:auto;touch-action:pan-y;background:rgba(20,18,28,.88);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
 #setup h2,.sheet h2{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin:2px 0 0;opacity:.75}
-#setup input{flex:1;min-width:0;font:700 15px var(--body);color:var(--paper);background:#2a2738;border:2px solid #4a4660;border-radius:8px;padding:6px 8px}
-#setup input:focus{outline:none;border-color:var(--home)}
+#setup input,.page input{flex:1;min-width:0;font:700 15px var(--body);color:var(--paper);background:#2a2738;border:2px solid #4a4660;border-radius:8px;padding:6px 8px}
+#setup input:focus,.page input:focus{outline:none;border-color:var(--home)}
 #setup .row{display:flex;gap:6px;align-items:center}
 #setup .chip{flex:0 0 auto;padding:5px 10px;font-size:15px}
-#pIcons{flex-wrap:wrap}#pIcons .chip{flex:0 0 22%;padding:4px 0;font-size:19px}
-#pIcon{font-size:20px!important;padding:3px 8px!important}
+#pIcons{flex-wrap:wrap}#pIcons .chip{flex:0 0 14%;padding:6px 0;font-size:24px}
+#pIcon{font-size:34px;line-height:1}
+#setup #openProf,#setup #openFr{flex:0 0 auto;text-align:left;padding:8px 12px;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .frow{display:flex;align-items:center;gap:6px;padding:2px 0}
 .frow .fic{font-size:19px}.frow .fnm{flex:1;min-width:0;font-weight:700;font-size:15px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .frow .fnm small{display:block;font-weight:500;font-size:12px;opacity:.75}.frow .fnm small.on{color:var(--good);opacity:1}
@@ -138,7 +139,12 @@ body.narrow #brand{display:none}
 .sitem:focus-visible{outline:3px solid var(--paper);outline-offset:2px}
 
 body.narrow .tab{font-size:11px;padding:7px 8px}
-#settings{position:absolute;inset:0;display:none;justify-content:center;padding:58px 0 0;pointer-events:auto;background:var(--ink);z-index:3}
+#settings,.page{position:absolute;inset:0;display:none;justify-content:center;padding:58px 0 0;pointer-events:auto;background:var(--ink);z-index:3}
+#profSheet,#frSheet{width:min(560px,100%);height:100%;max-height:none;border:0;border-radius:0;padding:8px 16px 20px;background:var(--ink)}
+.page .sheet>h2{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin:8px 0 0;opacity:.75;font-family:var(--body);color:var(--paper)}
+.page .row{display:flex;gap:8px;align-items:center}
+.page .chip{flex:0 0 auto;padding:7px 14px}
+.page .note{margin:0;font-size:14px;opacity:.8}
 #setSheet{width:min(720px,100%);height:100%;max-height:none;border:0;border-radius:0;padding:8px 16px 20px;background:var(--ink)}
 .bindrow{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:17px;font-weight:500}
 .bindrow .chip{flex:0 0 150px}
@@ -279,13 +285,8 @@ body.pauseset #settings{padding-top:0}
   <div id="toast" role="status"></div>
   <div id="inv"><span id="invT"></span><button class="chip" id="invY">Join</button><button class="chip" id="invN">No</button></div>
   <div id="setup">
-    <h2>Friends</h2>
-    <div id="fList"></div>
-    <div class="row"><input id="fCode" maxlength="8" placeholder="Friend code" aria-label="Friend code" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="chip" id="fAdd">Add</button></div>
-    <p id="fMine" class="note"></p>
-    <h2>Game profile</h2>
-    <div class="row"><button class="chip" id="pIcon" aria-label="Change icon"></button><input id="pName" maxlength="18" aria-label="Your name" autocomplete="off" spellcheck="false"></div>
-    <div class="row wrap" id="pIcons" style="display:none"></div>
+    <button class="chip" id="openProf" aria-label="Game profile"></button>
+    <button class="chip" id="openFr">Friends</button>
     <p id="rot" style="font-size:13px;opacity:.8"></p>
   </div>
   <button class="go" id="play">Play</button>
@@ -293,6 +294,24 @@ body.pauseset #settings{padding-top:0}
   <div id="mvp"><div class="sheet" id="mvpSheet"></div></div>
   <div id="shop"><div class="sheet" id="shopSheet"></div></div>
   <div id="settings"><div class="sheet" id="setSheet"></div></div>
+  <div id="profile" class="page"><div class="sheet" id="profSheet">
+    <div class="shead"><h2>Game profile</h2><button class="done" id="profBack">Back</button></div>
+    <h2>Name</h2>
+    <div class="row"><span id="pIcon" aria-hidden="true"></span><input id="pName" maxlength="18" aria-label="Your name" autocomplete="off" spellcheck="false"></div>
+    <p class="note">Up to 18 characters. Friends and other players see this name.</p>
+    <h2>Icon</h2>
+    <div class="row wrap" id="pIcons"></div>
+    <p class="note" id="pCode"></p>
+  </div></div>
+  <div id="friendsPg" class="page"><div class="sheet" id="frSheet">
+    <div class="shead"><h2>Friends</h2><button class="done" id="frBack">Back</button></div>
+    <h2>Add a friend</h2>
+    <div class="row"><input id="fCode" maxlength="18" placeholder="Type a name or a friend code" aria-label="Name or friend code" autocomplete="off" spellcheck="false"><button class="chip" id="fAdd">Search</button></div>
+    <div id="fFound"></div>
+    <p id="fMine" class="note"></p>
+    <h2 id="fHead">Your friends</h2>
+    <div id="fList"></div>
+  </div></div>
 </div>
 <div id="pullRes"><h2 id="resT">You pulled</h2><div id="resGrid"></div><button class="go" id="resOk">OK</button></div>
 <div id="layBar"><span>Drag the buttons where you want them</span><button class="chip" id="layReset">Reset</button><button class="chip" id="layDone">Done</button></div>
@@ -1408,21 +1427,38 @@ function friendsRender(){
     if($('fInv'+i))$('fInv'+i).addEventListener('click',function(){if(net.on)return;srvSend({t:'invite',to:q.code,load:myLoadout()});toast('Invite sent to '+q.name);});
     $('fRm'+i).addEventListener('click',function(){save.friends.splice(i,1);persist();friendsRender();});
   });
-  var c=srv.code||save.code;
-  $('fMine').textContent=!SERVER?'':(c?'Your code: '+c+(srv.ready?'':' (connecting)'):'Getting your code');
+  var c=srv.code||save.code,on=0;save.friends.forEach(function(q){if(srv.stat[q.code]&&srv.stat[q.code].on)on++;});
+  $('fMine').textContent=!SERVER?'':(c?'Your friend code: '+c+(srv.ready?'':' (connecting)'):'Getting your code');
+  $('fHead').textContent='Your friends ('+save.friends.length+')';
+  $('openFr').textContent='\ud83d\udc65 Friends'+(save.friends.length?' \u00b7 '+on+' online':'');
 }
-function friendAdd(){
-  var el=$('fCode'),c=String(el.value||'').toUpperCase().replace(/[^0-9A-F]/g,'');
-  if(c.length!==8){toast('A friend code is 8 letters and numbers');return;}
-  if(c===(srv.code||save.code)){toast('That is your own code');return;}
-  if(save.friends.some(function(q){return q.code===c;})){toast('Already on your list');el.value='';return;}
-  if(save.friends.length>=50){toast('Your list is full');return;}
-  save.friends.push({code:c,name:'Player',icon:0});persist();el.value='';friendsRender();friendsAsk();
+function friendPut(c,name,icon){
+  if(c===(srv.code||save.code)){toast('That is you');return false;}
+  if(save.friends.some(function(q){return q.code===c;})){toast('Already on your list');return false;}
+  if(save.friends.length>=50){toast('Your list is full');return false;}
+  save.friends.push({code:c,name:cleanName(name)||'Player',icon:Math.max(0,Math.min(ICONS.length-1,icon|0))});persist();friendsRender();friendsAsk();return true;
+}
+function friendFind(){ // a friend code adds straight away; anything else is looked up by name
+  var el=$('fCode'),v=String(el.value||'').trim();
+  if(/^[0-9a-fA-F]{8}$/.test(v)){if(friendPut(v.toUpperCase(),'Player',0)){el.value='';$('fFound').innerHTML='';toast('Friend added');}return;}
+  if(v.length<2){toast('Type at least 2 letters of their name');return;}
+  if(!srv.ready){$('fFound').innerHTML='<p class="note">Not connected to the server yet. Try again in a moment.</p>';srvConnect();return;}
+  $('fFound').innerHTML='<p class="note">Searching</p>';srvSend({t:'search',q:v.slice(0,18)});
+}
+function foundRender(list){
+  var h='';list=(list||[]).filter(function(x){return x&&/^[0-9A-F]{8}$/.test(x.code);}).slice(0,10);
+  list.forEach(function(x,i){var have=save.friends.some(function(q){return q.code===x.code;});
+    h+='<div class="frow"><span class="fic">'+ICONS[Math.max(0,Math.min(ICONS.length-1,x.icon|0))]+'</span><span class="fnm">'+esc(cleanName(x.name))+'<small class="on">Online \u00b7 '+x.code+'</small></span>'+(have?'<span class="note">Added</span>':'<button class="chip" id="fGet'+i+'">Add</button>')+'</div>';});
+  if(!h)h='<p class="note">Nobody with that name has the game open right now. Name search only finds players who are online. A friend code works any time.</p>';
+  $('fFound').innerHTML=h;
+  list.forEach(function(x,i){if($('fGet'+i))$('fGet'+i).addEventListener('click',function(){if(friendPut(x.code,x.name,x.icon)){toast('Friend added');foundRender(list);}});});
 }
 function profRender(){
   $('pIcon').textContent=ICONS[save.prof.icon];if(document.activeElement!==$('pName'))$('pName').value=save.prof.name;
-  var h='';ICONS.forEach(function(ic,i){h+='<button class="chip" id="pIc'+i+'" aria-pressed="'+(i===save.prof.icon?'true':'false')+'">'+ic+'</button>';});$('pIcons').innerHTML=h;
-  ICONS.forEach(function(ic,i){$('pIc'+i).addEventListener('click',function(){save.prof.icon=i;$('pIcons').style.display='none';profSave();profRender();});});
+  $('openProf').textContent=ICONS[save.prof.icon]+' '+save.prof.name;
+  var h='',c=srv.code||save.code;ICONS.forEach(function(ic,i){h+='<button class="chip" id="pIc'+i+'" aria-pressed="'+(i===save.prof.icon?'true':'false')+'">'+ic+'</button>';});$('pIcons').innerHTML=h;
+  ICONS.forEach(function(ic,i){$('pIc'+i).addEventListener('click',function(){save.prof.icon=i;profSave();profRender();});});
+  $('pCode').textContent=c?'Your friend code: '+c:'';
 }
 function profSave(){persist();srvSend({t:'prof',name:save.prof.name,icon:save.prof.icon});}
 function invRender(){var q=srv.inv;$('inv').style.display=q?'flex':'none';if(q)$('invT').textContent=ICONS[q.icon|0]+' '+cleanName(q.name)+' invited you to play';}
@@ -1433,7 +1469,7 @@ function invJoin(){
 }
 function srvData(d){
   var i,g;
-  if(d.t==='you'){srv.code=String(d.code||'');if(save.code!==srv.code){save.code=srv.code;persist();}friendsRender();return;}
+  if(d.t==='you'){srv.code=String(d.code||'');if(save.code!==srv.code){save.code=srv.code;persist();}friendsRender();profRender();return;}
   if(d.t==='fstat'){
     srv.stat={};var ch=false;
     (d.list||[]).forEach(function(x){srv.stat[x.code]=x;if(!x.on)return;
@@ -1441,6 +1477,7 @@ function srvData(d){
     if(ch)persist();friendsRender();return;
   }
   if(d.t==='invited'){if(d.from&&game.state==='menu'&&!net.on&&!net.searching&&!titleOn){srv.inv=d.from;invRender();}return;}
+  if(d.t==='found'){if(sheetOpen==='friends')foundRender(d.list);return;}
   if(d.t==='nojoin'){if(net.searching&&net.join&&!net.on)mmFail('That invite is not open any more.');return;}
   if(d.t==='noinvite'){toast('They cannot be invited right now');return;}
   if(d.t==='lobby'){
@@ -2386,6 +2423,8 @@ function openSheet(n){
   sheetOpen=n;
   if(n!=='mvp')endLobbyEmote();$('mvp').style.display=n==='mvp'?'flex':'none';$('tabMvp').setAttribute('aria-pressed',n==='mvp'?'true':'false');
   $('baller').style.display=n==='baller'?'flex':'none';$('shop').style.display=n==='shop'?'flex':'none';
+  $('profile').style.display=n==='profile'?'flex':'none';$('friendsPg').style.display=n==='friends'?'flex':'none';
+  if(n==='profile')profRender();if(n==='friends'){$('fFound').innerHTML='';friendsRender();friendsAsk();}
   $('settings').style.display=n==='settings'?'flex':'none';$('tabSet').setAttribute('aria-pressed',n==='settings'?'true':'false');keyCap=padCap=null;if(n==='settings')renderSettings();
   $('setup').style.display=n?'none':'flex';$('play').style.display=n?'none':'';
   $('tabHome').setAttribute('aria-pressed',n===''?'true':'false');
@@ -2645,9 +2684,10 @@ function begin(pr){if(net.on||net.searching)return;postClean();endLobbyEmote();e
 $('play').addEventListener('click',showModes);
 $('again').addEventListener('click',begin);
 $('toLobby').addEventListener('click',showLobby);
-$('fAdd').addEventListener('click',friendAdd);$('fCode').addEventListener('keydown',function(e){if(e.key==='Enter')friendAdd();});
-$('pIcon').addEventListener('click',function(){var g=$('pIcons');g.style.display=g.style.display==='none'?'flex':'none';});
-$('pName').addEventListener('input',function(){var v=cleanName(this.value);if(v!==this.value)this.value=v;if(v)save.prof.name=v;});
+$('fAdd').addEventListener('click',friendFind);$('fCode').addEventListener('keydown',function(e){if(e.key==='Enter')friendFind();});
+$('openProf').addEventListener('click',function(){openSheet('profile');});$('openFr').addEventListener('click',function(){openSheet('friends');});
+$('profBack').addEventListener('click',function(){openSheet('');});$('frBack').addEventListener('click',function(){openSheet('');});
+$('pName').addEventListener('input',function(){var v=cleanName(this.value);if(v!==this.value)this.value=v;if(v){save.prof.name=v;$('openProf').textContent=ICONS[save.prof.icon]+' '+v;}});
 $('pName').addEventListener('change',function(){if(!cleanName(this.value))this.value=save.prof.name;profSave();});
 $('invY').addEventListener('click',invJoin);$('invN').addEventListener('click',function(){srv.inv=null;invRender();});
 $('postSkip').addEventListener('click',postDone);
