@@ -107,7 +107,7 @@ function start(r) {
   teams.forEach((tm, ti) => tm.forEach((m, i) => { m.slot = ti * r.size + i; list[m.slot] = { load: m.load, name: m.name, icon: m.icon, bn: m.bn }; }));
   r.host = r.members[0];
   const seed = Math.floor(Math.random() * 1000000);     // picks the map, the same for everyone
-  r.members.forEach(m => m.c.send({ t: 'start', list, you: m.slot, win: WIN, host: m === r.host, seed }));
+  r.members.forEach(m => m.c.send({ t: 'start', list, you: m.slot, win: r.size === 3 ? 21 : 31, host: m === r.host, seed }));
 }
 function leave(m) {
   const r = m.room; if (!r) return; m.room = null;
