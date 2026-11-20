@@ -2,7 +2,7 @@
 
 <img src="static-icon.png" alt="Static game icon" width="160">
 
-A cel-shaded 3v3 full-court street basketball game that runs in the browser. You control one player from an over-the-shoulder camera; your two teammates and the three opponents play on their own.
+A cel-shaded 5v5 basketball game that runs in the browser. You control one player from an over-the-shoulder camera; your four teammates and the five opponents play on their own (or are real people online).
 
 ## Play
 
@@ -12,7 +12,8 @@ To host it, turn on GitHub Pages for this repository (Settings → Pages → dep
 
 ## What's in it
 
-- Full-court 3v3 in a fenced city court, first to 11, 15 or 21, with three CPU levels
+- Full-court 5v5 in an indoor arena, first to 21
+- Every baller has an ultimate: fill the meter, press ULT with the ball, and an 8 second scene plays that always scores
 - A 2.5D start screen, then a lobby with Home, Baller, Gacha and Settings tabs
 - Gacha with five banners: 17 anime-style characters, plus jump shots, dribbles and dunks to pull
 - Five dribble slots (stick forward, left, right, back, no stick), a separate dunk button, sprint and stamina
