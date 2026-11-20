@@ -4,7 +4,7 @@
 // if that player leaves, the server hands the match to another player.
 'use strict';
 const http = require('http'), crypto = require('crypto');
-const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, WIN = 21;
+const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, WIN = 21, WAIT = +process.env.WAIT || 30;   // seconds a search waits before the CPU fills the match
 
 /* ---------- tiny WebSocket layer ---------- */
 function frame(op, buf) {
@@ -89,7 +89,7 @@ function teamsFor(members) {
 function fits(r, group) { return !r.started && r.members.length + group.length <= 6 && !!teamsFor(r.members.concat(group)); }
 function join(r, group) {                                // put players into a room that has not started
   group.forEach(m => { m.room = r; r.members.push(m); });
-  if (r.members.length >= 2 && r.cd <= 0) { r.cd = 30; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }   // two real players: start in 30 seconds, CPU fills the rest
+  if (r.members.length >= 1 && r.cd <= 0) { r.cd = WAIT; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }   // the match starts 30 seconds after the first player arrives; the CPU fills every empty spot
   if (r.members.length >= 6) start(r); else lobby(r);
 }
 function lobby(r) { r.members.forEach((m, i) => m.c.send({ t: 'lobby', n: r.members.length, cd: r.cd, first: i === 0 })); }
@@ -99,7 +99,7 @@ function tickLobby(r) {
   if (r.cd <= 0) start(r); else lobby(r);
 }
 function start(r) {
-  if (r.started || r.members.length < 2) return;
+  if (r.started || r.members.length < 1) return;
   const teams = teamsFor(r.members); if (!teams) return;
   r.started = true; clearInterval(r.timer); r.timer = null;
   const list = [null, null, null, null, null, null];
@@ -111,7 +111,7 @@ function leave(m) {
   const r = m.room; if (!r) return; m.room = null;
   const i = r.members.indexOf(m); if (i >= 0) r.members.splice(i, 1);
   if (!r.members.length) { clearInterval(r.timer); rooms.delete(r); return; }
-  if (!r.started) { if (r.members.length < 2) { r.cd = -1; clearInterval(r.timer); r.timer = null; } lobby(r); return; }
+  if (!r.started) { lobby(r); return; }
   if (r.host === m) {                                   // hand the match to someone still here
     r.host = r.members[0];
     r.host.c.send({ t: 'host', humans: r.members.map(x => x.slot) });
