@@ -62,7 +62,7 @@ function codeOf(pid) { return crypto.createHash('sha256').update('static:' + pid
 function cleanName(v) { return (typeof v === 'string' ? v : '').replace(/[\u0000-\u001f<>&]/g, '').slice(0, 18) || 'Player'; }
 function cleanIcon(v) { v = v | 0; return v >= 0 && v < 64 ? v : 0; }
 function cleanText(v) { return (typeof v === 'string' ? v : '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 140); }
-function pub(m) { return { code: m.code, name: m.name, icon: m.icon, bn: m.bn, c: m.load ? m.load.c : '' }; }
+function pub(m) { return { code: m.code, name: m.name, icon: m.icon, bn: m.bn, c: m.load ? m.load.c : '', bb: m.load ? m.load.bb : '', bg: m.load ? m.load.bg : '' }; }
 
 /* a lobby (party): up to 3 friends who queue together and play on the same team */
 function partyTell(p) { const list = p.members.map(pub); p.members.forEach(x => x.c.send({ t: 'party', leader: p.members[0].code, list })); }
@@ -122,7 +122,7 @@ function leave(m) {
 function cleanLoad(l) {
   const s = v => (typeof v === 'string' ? v.slice(0, 24) : ''), d = (l && l.drs) || {};
   l = l || {};
-  return { c: s(l.c), js: s(l.js), dk: s(l.dk), em: s(l.em), bb: s(l.bb), drs: { f: s(d.f), l: s(d.l), r: s(d.r), b: s(d.b), n: s(d.n) } };
+  return { c: s(l.c), js: s(l.js), dk: s(l.dk), em: s(l.em), bb: s(l.bb), bg: s(l.bg), drs: { f: s(d.f), l: s(d.l), r: s(d.r), b: s(d.b), n: s(d.n) } };
 }
 function onMessage(m, d) {
   const r = m.room;
@@ -161,7 +161,7 @@ function onMessage(m, d) {
     if (m.code && x && x !== m) x.c.send({ t: 'fadd', from: pub(m) });
     return;
   }
-  if (d.t === 'load') { const was = m.load ? m.load.c : ''; m.load = cleanLoad(d.load); if (m.party && m.load.c !== was) partyTell(m.party); return; }
+  if (d.t === 'load') { const was = m.load ? m.load.c : '', wasB = m.load ? m.load.bb : '', wasG = m.load ? m.load.bg : ''; m.load = cleanLoad(d.load); if (m.party && (m.load.c !== was || m.load.bb !== wasB || m.load.bg !== wasG)) partyTell(m.party); return; }
   if (d.t === 'invite') {                                // ask a friend into your lobby
     const x = typeof d.to === 'string' ? byCode.get(d.to) : null;
     if (!m.code || !x || x === m || r || (x.room && x.room.started) || (m.party && m.party.members.length >= 3) || (m.party && m.party.members.indexOf(x) >= 0)) { m.c.send({ t: 'noinvite' }); return; }
