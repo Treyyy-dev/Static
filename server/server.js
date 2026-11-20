@@ -93,7 +93,7 @@ function join(r, group) {                                // put players into a r
   if (r.members.length >= 1 && r.cd <= 0) { r.cd = WAIT; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }   // the match starts 30 seconds after the first player arrives; the CPU fills every empty spot
   if (r.members.length >= r.size * 2) start(r); else lobby(r);
 }
-function lobby(r) { r.members.forEach((m, i) => m.c.send({ t: 'lobby', n: r.members.length, cd: r.cd, first: i === 0 })); }
+function lobby(r) { r.members.forEach((m, i) => m.c.send({ t: 'lobby', size: r.size, n: r.members.length, cd: r.cd, first: i === 0 })); }
 function tickLobby(r) {
   if (r.started || r.cd <= 0) return;
   r.cd -= 1;
@@ -190,7 +190,15 @@ function onMessage(m, d) {
     x.c.send({ t: 'msg', from: pub(m), text });
     return;
   }
-  if (d.t === 'leave') { if (r) leave(m); return; }
+  if (d.t === 'leave') {
+    if (r) {
+      if (!r.started && m.party && m.party.members.length > 1) {      // cancelling a search cancels it for the whole lobby
+        m.party.members.forEach(x => { if (x.room !== r) return; x.room = null; const i = r.members.indexOf(x); if (i >= 0) r.members.splice(i, 1); if (x !== m) x.c.send({ t: 'cancel' }); });
+        if (!r.members.length) { clearInterval(r.timer); rooms.delete(r); } else lobby(r);
+      } else leave(m);
+    }
+    return;
+  }
   if (d.t === 'find') {
     if (r) return;
     m.load = cleanLoad(d.load);

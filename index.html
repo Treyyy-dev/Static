@@ -2216,7 +2216,7 @@ function peerOpen(){
     net.peer.on('disconnected',function(){try{if(net.peer&&!net.peer.destroyed)net.peer.reconnect();}catch(e){}});
   });
 }
-function lobbyText(n,cd){return n<2?('Looking for players. You are the only one here so far.'+(cd>0?' If nobody joins, the match starts in '+Math.ceil(cd)+' seconds with CPU players.':'')):(n+' of '+(selSize()*2)+' players here.'+(cd>0?' Match starts in '+Math.ceil(cd)+' seconds. Empty spots are filled by the CPU.':''));}
+function lobbyText(n,cd,sz){sz=sz===3||sz===5?sz:selSize();return n<2?('Looking for players. You are the only one here so far.'+(cd>0?' If nobody joins, the match starts in '+Math.ceil(cd)+' seconds with CPU players.':'')):(n+' of '+(sz*2)+' players here.'+(cd>0?' Match starts in '+Math.ceil(cd)+' seconds. Empty spots are filled by the CPU.':''));}
 function mmTry(){ // is somebody already waiting in room k?
   if(!net.searching||net.conn||net.hostPeer)return;
   var c,got=false;mmStatus('Looking for players');
@@ -2424,6 +2424,7 @@ function srvData(d){
     if(sheetOpen==='friends')$('fFound').innerHTML='';return;
   }
   if(d.t==='nojoin'){toast('That lobby is full or already playing');return;}
+  if(d.t==='cancel'){if(net.searching&&!net.on){net.srv=false;mmStop();$('mm').style.display='none';toast('Matchmaking cancelled for your lobby');}return;}
   if(d.t==='nolead'){mmStop();$('mm').style.display='none';toast('Only the lobby leader can start a match');return;}
   if(d.t==='party'){
     var had=!!srv.party;srv.party=(d.list&&d.list.length>1)?{leader:String(d.leader||''),list:d.list.slice(0,3)}:null;partyRender();lobbyMates();
@@ -2444,13 +2445,13 @@ function srvData(d){
       if(game.state!=='menu'||titleOn){srvSend({t:'leave'});return;}
       net.searching=true;net.srv=true;net.join=null;net.t0=Date.now();hideModes();mmUI();
     }
-    mmStatus(lobbyText(d.n,d.cd));$('mmStart').style.display=(d.first&&d.n>=2)?'':'none';return;
+    mmStatus(lobbyText(d.n,d.cd,d.size));$('mmStart').style.display=(d.first&&d.n>=2)?'':'none';return;
   }
   if(d.t==='start'){
     if(net.on||!d.list)return;
     if(!net.searching){srvSend({t:'leave'});return;}
     net.guests=[];net.conn=null;net.started=true;
-    if(d.host){net.role='host';for(i=0;i<NP;i++)if(d.list[i]&&i!==d.you)net.guests.push({c:srvConn(i),load:d.list[i].load||{},slot:i,p:null});}
+    if(d.host){net.role='host';for(i=0;i<d.list.length;i++)if(d.list[i]&&i!==d.you)net.guests.push({c:srvConn(i),load:d.list[i].load||{},slot:i,p:null});}
     else{net.role='guest';net.conn={open:true,send:srvSend};}
     netBegin(d.list,d.you,d.win,d.seed);return;
   }
@@ -2487,7 +2488,7 @@ function netStart(){
 }
 function netBegin(list,me,win,seed){
   lobbyMatesOff();setSize(list&&list.length===6?3:5);win=TS===3?21:31;game.fetch=null;game.sc=0;game.safe=-1;game.front=false;game.frontT=-1;var nsd=nameSeed(list);game.map=mapPick(typeof seed==='number'?seed:nsd);themeSet(game.map);
-  postClean();recReset();net.on=true;net.searching=false;net.snap=null;net.out=null;$('mm').style.display='none';if(!net.win0)net.win0=WIN;WIN=21;
+  postClean();recReset();net.on=true;net.searching=false;net.snap=null;net.out=null;$('mm').style.display='none';if(!net.win0)net.win0=WIN;WIN=win===21?21:31;
   players.forEach(function(p,s){
     var r=list[s];p.net=null;p.I=null;p.isUser=s===me;p.stam=1;p.tired=false;p.stamCd=0;
     var bt=botId(s,nsd);p.name=r?(cleanName(r.name)||'Player'):bt.name;p.icon=r?icoOK(r.icon):bt.icon;p.bn=r?r.bn:bt.bn;tagSet(p);
