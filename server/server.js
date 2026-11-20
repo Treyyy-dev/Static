@@ -75,22 +75,23 @@ function partyLeave(m) {
 }
 
 /* teams: people who queued together stay together; everyone else goes where there are fewer real players */
-function teamsFor(members) {
+function teamsFor(members, size) {
+  size = size === 3 ? 3 : 5;
   const groups = new Map();
   members.forEach(m => { const k = m.party && m.party.members.length > 1 ? 'p' + m.party.id : 's' + m.uid; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); });
   const gs = [...groups.values()].sort((a, b) => b.length - a.length), teams = [[], []];
   for (const g of gs) {
-    const first = teams[0].length <= teams[1].length ? 0 : 1, t = teams[first].length + g.length <= 5 ? first : (teams[1 - first].length + g.length <= 5 ? 1 - first : -1);
+    const first = teams[0].length <= teams[1].length ? 0 : 1, t = teams[first].length + g.length <= size ? first : (teams[1 - first].length + g.length <= size ? 1 - first : -1);
     if (t < 0) return null;
     teams[t].push(...g);
   }
   return teams;
 }
-function fits(r, group) { return !r.started && r.members.length + group.length <= 10 && !!teamsFor(r.members.concat(group)); }
+function fits(r, group, size) { return !r.started && r.size === size && r.members.length + group.length <= size * 2 && !!teamsFor(r.members.concat(group), size); }
 function join(r, group) {                                // put players into a room that has not started
   group.forEach(m => { m.room = r; r.members.push(m); });
   if (r.members.length >= 1 && r.cd <= 0) { r.cd = WAIT; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }   // the match starts 30 seconds after the first player arrives; the CPU fills every empty spot
-  if (r.members.length >= 10) start(r); else lobby(r);
+  if (r.members.length >= r.size * 2) start(r); else lobby(r);
 }
 function lobby(r) { r.members.forEach((m, i) => m.c.send({ t: 'lobby', n: r.members.length, cd: r.cd, first: i === 0 })); }
 function tickLobby(r) {
@@ -100,12 +101,13 @@ function tickLobby(r) {
 }
 function start(r) {
   if (r.started || r.members.length < 1) return;
-  const teams = teamsFor(r.members); if (!teams) return;
+  const teams = teamsFor(r.members, r.size); if (!teams) return;
   r.started = true; clearInterval(r.timer); r.timer = null;
-  const list = [null, null, null, null, null, null, null, null, null, null];
-  teams.forEach((tm, ti) => tm.forEach((m, i) => { m.slot = ti * 5 + i; list[m.slot] = { load: m.load, name: m.name, icon: m.icon, bn: m.bn }; }));
+  const list = []; for (let i = 0; i < r.size * 2; i++) list.push(null);
+  teams.forEach((tm, ti) => tm.forEach((m, i) => { m.slot = ti * r.size + i; list[m.slot] = { load: m.load, name: m.name, icon: m.icon, bn: m.bn }; }));
   r.host = r.members[0];
-  r.members.forEach(m => m.c.send({ t: 'start', list, you: m.slot, win: WIN, host: m === r.host }));
+  const seed = Math.floor(Math.random() * 1000000);     // picks the map, the same for everyone
+  r.members.forEach(m => m.c.send({ t: 'start', list, you: m.slot, win: WIN, host: m === r.host, seed }));
 }
 function leave(m) {
   const r = m.room; if (!r) return; m.room = null;
@@ -197,9 +199,11 @@ function onMessage(m, d) {
       if (m.party.members[0] !== m) { m.c.send({ t: 'nolead' }); return; }
       group = m.party.members.filter(x => !x.room);      // the whole lobby queues together
     }
+    const size = d.size === 3 ? 3 : 5;                    // 3v3 and 5v5 queue separately
     let room = null;
-    for (const q of rooms) if (fits(q, group)) { room = q; break; }
-    join(room || newRoom(), group);
+    for (const q of rooms) if (fits(q, group, size)) { room = q; break; }
+    if (!room) { room = newRoom(); room.size = size; }
+    join(room, group);
     return;
   }
   if (!r) return;
