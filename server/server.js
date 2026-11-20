@@ -4,7 +4,7 @@
 // if that player leaves, the server hands the match to another player.
 'use strict';
 const http = require('http'), crypto = require('crypto');
-const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, ORDER = [0, 3, 1, 4, 2, 5], WIN = 21;
+const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, WIN = 21;
 
 /* ---------- tiny WebSocket layer ---------- */
 function frame(op, buf) {
@@ -55,16 +55,41 @@ function attach(sock, onMsg, onClose) {
 }
 
 /* ---------- rooms ---------- */
-let waiting = null, rooms = new Set(), online = 0;
-const byCode = new Map();                                // friend code -> connected player
-function newRoom(priv) { const r = { members: [], started: false, cd: -1, host: null, timer: null, priv: !!priv }; rooms.add(r); return r; }
+const rooms = new Set(); let online = 0, partySeq = 0;
+const byCode = new Map();                                // player code -> connected player
+function newRoom() { const r = { members: [], started: false, cd: -1, host: null, timer: null }; rooms.add(r); return r; }
 function codeOf(pid) { return crypto.createHash('sha256').update('static:' + pid).digest('hex').slice(0, 8).toUpperCase(); }
 function cleanName(v) { return (typeof v === 'string' ? v : '').replace(/[\u0000-\u001f<>&]/g, '').slice(0, 18) || 'Player'; }
 function cleanIcon(v) { v = v | 0; return v >= 0 && v < 64 ? v : 0; }
-function join(r, m, load) {                              // put a player into a room that has not started
-  m.room = r; m.load = cleanLoad(load); r.members.push(m);
-  if (r.members.length === 2) { r.cd = 10; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }
-  else if (r.members.length > 2) r.cd = Math.max(r.cd, 5);
+function cleanText(v) { return (typeof v === 'string' ? v : '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 140); }
+function pub(m) { return { code: m.code, name: m.name, icon: m.icon }; }
+
+/* a lobby (party): up to 3 friends who queue together and play on the same team */
+function partyTell(p) { const list = p.members.map(pub); p.members.forEach(x => x.c.send({ t: 'party', leader: p.members[0].code, list })); }
+function partyLeave(m) {
+  const p = m.party; if (!p) return; m.party = null;
+  const i = p.members.indexOf(m); if (i >= 0) p.members.splice(i, 1);
+  m.c.send({ t: 'party', leader: '', list: [] });
+  if (p.members.length <= 1) { p.members.forEach(x => { x.party = null; x.c.send({ t: 'party', leader: '', list: [] }); }); p.members = []; }
+  else partyTell(p);
+}
+
+/* teams: people who queued together stay together; everyone else goes where there are fewer real players */
+function teamsFor(members) {
+  const groups = new Map();
+  members.forEach(m => { const k = m.party && m.party.members.length > 1 ? 'p' + m.party.id : 's' + m.uid; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); });
+  const gs = [...groups.values()].sort((a, b) => b.length - a.length), teams = [[], []];
+  for (const g of gs) {
+    const first = teams[0].length <= teams[1].length ? 0 : 1, t = teams[first].length + g.length <= 3 ? first : (teams[1 - first].length + g.length <= 3 ? 1 - first : -1);
+    if (t < 0) return null;
+    teams[t].push(...g);
+  }
+  return teams;
+}
+function fits(r, group) { return !r.started && r.members.length + group.length <= 6 && !!teamsFor(r.members.concat(group)); }
+function join(r, group) {                                // put players into a room that has not started
+  group.forEach(m => { m.room = r; r.members.push(m); });
+  if (r.members.length >= 2 && r.cd <= 0) { r.cd = 30; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }   // two real players: start in 30 seconds, CPU fills the rest
   if (r.members.length >= 6) start(r); else lobby(r);
 }
 function lobby(r) { r.members.forEach((m, i) => m.c.send({ t: 'lobby', n: r.members.length, cd: r.cd, first: i === 0 })); }
@@ -75,17 +100,18 @@ function tickLobby(r) {
 }
 function start(r) {
   if (r.started || r.members.length < 2) return;
-  r.started = true; clearInterval(r.timer); r.timer = null; if (waiting === r) waiting = null;
+  const teams = teamsFor(r.members); if (!teams) return;
+  r.started = true; clearInterval(r.timer); r.timer = null;
   const list = [null, null, null, null, null, null];
-  r.members.forEach((m, i) => { m.slot = ORDER[i]; list[m.slot] = { load: m.load }; });
+  teams.forEach((tm, ti) => tm.forEach((m, i) => { m.slot = ti * 3 + i; list[m.slot] = { load: m.load, name: m.name, icon: m.icon }; }));
   r.host = r.members[0];
   r.members.forEach(m => m.c.send({ t: 'start', list, you: m.slot, win: WIN, host: m === r.host }));
 }
 function leave(m) {
   const r = m.room; if (!r) return; m.room = null;
   const i = r.members.indexOf(m); if (i >= 0) r.members.splice(i, 1);
-  if (!r.members.length) { clearInterval(r.timer); rooms.delete(r); if (waiting === r) waiting = null; return; }
-  if (!r.started) { if (r.members.length < 2) r.cd = -1; lobby(r); return; }
+  if (!r.members.length) { clearInterval(r.timer); rooms.delete(r); return; }
+  if (!r.started) { if (r.members.length < 2) { r.cd = -1; clearInterval(r.timer); r.timer = null; } lobby(r); return; }
   if (r.host === m) {                                   // hand the match to someone still here
     r.host = r.members[0];
     r.host.c.send({ t: 'host', humans: r.members.map(x => x.slot) });
@@ -119,28 +145,47 @@ function onMessage(m, d) {
     m.c.send({ t: 'found', list });
     return;
   }
-  if (d.t === 'invite') {
+  if (d.t === 'load') { m.load = cleanLoad(d.load); return; }
+  if (d.t === 'invite') {                                // ask a friend into your lobby
     const x = typeof d.to === 'string' ? byCode.get(d.to) : null;
-    if (!m.code || !x || x === m || (x.room && x.room.started) || (r && r.started)) { m.c.send({ t: 'noinvite' }); return; }
-    m.inv.set(x.code, Date.now()); m.invLoad = cleanLoad(d.load);
-    x.c.send({ t: 'invited', from: { code: m.code, name: m.name, icon: m.icon } });
+    if (!m.code || !x || x === m || r || (x.room && x.room.started) || (m.party && m.party.members.length >= 3) || (m.party && m.party.members.indexOf(x) >= 0)) { m.c.send({ t: 'noinvite' }); return; }
+    m.inv.set(x.code, Date.now()); m.load = cleanLoad(d.load);
+    x.c.send({ t: 'invited', from: pub(m) });
     return;
   }
   if (d.t === 'accept') {
     const x = typeof d.from === 'string' ? byCode.get(d.from) : null, at = x && m.code ? x.inv.get(m.code) : 0;
-    if (!x || !at || Date.now() - at > 120000 || (x.room && x.room.started) || (r && r.started)) { m.c.send({ t: 'nojoin' }); return; }
+    if (!x || !at || Date.now() - at > 120000 || x.room || (r && r.started) || (x.party && x.party.members.length >= 3)) { m.c.send({ t: 'nojoin' }); return; }
     x.inv.delete(m.code);
     if (r) leave(m);
-    let pr = x.room;
-    if (!pr || !pr.priv || pr.members.length >= 6) { if (pr) leave(x); pr = newRoom(true); join(pr, x, x.invLoad); }
-    join(pr, m, d.load);
+    if (m.party) partyLeave(m);
+    if (!x.party) { x.party = { id: ++partySeq, members: [x] }; }
+    x.party.members.push(m); m.party = x.party; m.load = cleanLoad(d.load);
+    partyTell(x.party);
+    return;
+  }
+  if (d.t === 'pleave') { partyLeave(m); return; }
+  if (d.t === 'msg') {                                   // a chat line to one online player
+    const now = Date.now(); m.msgT = m.msgT.filter(v => now - v < 5000);
+    const x = typeof d.to === 'string' ? byCode.get(d.to) : null, text = cleanText(d.text);
+    if (!m.code || !text || m.msgT.length >= 6) return;
+    m.msgT.push(now);
+    if (!x || x === m) { m.c.send({ t: 'msgfail', to: String(d.to || '').slice(0, 8) }); return; }
+    x.c.send({ t: 'msg', from: pub(m), text });
     return;
   }
   if (d.t === 'leave') { if (r) leave(m); return; }
   if (d.t === 'find') {
     if (r) return;
-    if (!waiting || waiting.started || waiting.members.length >= 6) waiting = newRoom(false);
-    join(waiting, m, d.load);
+    m.load = cleanLoad(d.load);
+    let group = [m];
+    if (m.party && m.party.members.length > 1) {
+      if (m.party.members[0] !== m) { m.c.send({ t: 'nolead' }); return; }
+      group = m.party.members.filter(x => !x.room);      // the whole lobby queues together
+    }
+    let room = null;
+    for (const q of rooms) if (fits(q, group)) { room = q; break; }
+    join(room || newRoom(), group);
     return;
   }
   if (!r) return;
@@ -162,9 +207,9 @@ server.on('upgrade', (req, sock) => {
   if (!key || String(req.headers.upgrade).toLowerCase() !== 'websocket') { sock.destroy(); return; }
   const acc = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acc + '\r\n\r\n');
-  const m = { room: null, slot: -1, load: null, c: null, code: '', name: 'Player', icon: 0, inv: new Map(), invLoad: null };
+  const m = { uid: ++partySeq, room: null, slot: -1, load: cleanLoad(null), c: null, code: '', name: 'Player', icon: 0, inv: new Map(), party: null, msgT: [] };
   online++;
-  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
+  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); partyLeave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
   const beat = setInterval(() => { if (!m.c.alive) { m.c.close(); return; } m.c.alive = false; m.c.ping(); }, 30000);
 });
 server.listen(PORT, () => console.log('Static server listening on ' + PORT));
