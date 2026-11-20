@@ -113,6 +113,12 @@ function onMessage(m, d) {
     }) });
     return;
   }
+  if (d.t === 'search') {                                // find players who are online now by name
+    const q = (typeof d.q === 'string' ? d.q : '').trim().toLowerCase().slice(0, 18), list = [];
+    if (q.length >= 2) for (const x of byCode.values()) { if (x !== m && x.name.toLowerCase().includes(q)) { list.push({ code: x.code, name: x.name, icon: x.icon }); if (list.length >= 10) break; } }
+    m.c.send({ t: 'found', list });
+    return;
+  }
   if (d.t === 'invite') {
     const x = typeof d.to === 'string' ? byCode.get(d.to) : null;
     if (!m.code || !x || x === m || (x.room && x.room.started) || (r && r.started)) { m.c.send({ t: 'noinvite' }); return; }
