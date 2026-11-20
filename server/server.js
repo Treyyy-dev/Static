@@ -134,6 +134,8 @@ function onMessage(m, d) {
   if (d.t === 'prof') { m.name = cleanName(d.name); m.icon = cleanIcon(d.icon); return; }
   if (d.t === 'friends') {
     const codes = Array.isArray(d.codes) ? d.codes.slice(0, 50) : [];
+    m.flist = new Set(codes.filter(c => typeof c === 'string'));
+    (Array.isArray(d.pend) ? d.pend.slice(0, 40) : []).forEach(c => { const x = typeof c === 'string' ? byCode.get(c) : null; if (x && x.flist.has(m.code)) m.c.send({ t: 'fadd', from: pub(x) }); });   // requests accepted while you were away
     m.c.send({ t: 'fstat', list: codes.filter(c => typeof c === 'string' && c.length === 8).map(c => {
       const x = byCode.get(c); return x ? { code: c, on: 1, name: x.name, icon: x.icon, busy: x.room && x.room.started ? 1 : 0 } : { code: c, on: 0 };
     }) });
@@ -143,6 +145,18 @@ function onMessage(m, d) {
     const q = (typeof d.q === 'string' ? d.q : '').trim().toLowerCase().slice(0, 18), list = [];
     if (q.length >= 2) for (const x of byCode.values()) { if (x !== m && x.name.toLowerCase().includes(q)) { list.push({ code: x.code, name: x.name, icon: x.icon }); if (list.length >= 10) break; } }
     m.c.send({ t: 'found', list });
+    return;
+  }
+  if (d.t === 'freq') {                                  // friend request: the other player has to accept
+    const x = typeof d.to === 'string' ? byCode.get(d.to) : null, now = Date.now(); m.reqT = m.reqT.filter(v => now - v < 30000);
+    if (!m.code || !x || x === m || m.reqT.length >= 8) return;
+    m.reqT.push(now); x.c.send({ t: 'freq', from: pub(m) });
+    return;
+  }
+  if (d.t === 'fok') {                                   // request accepted: tell the asker if they are here
+    const x = typeof d.to === 'string' ? byCode.get(d.to) : null;
+    if (m.code) m.flist.add(String(d.to || '').slice(0, 8));
+    if (m.code && x && x !== m) x.c.send({ t: 'fadd', from: pub(m) });
     return;
   }
   if (d.t === 'load') { m.load = cleanLoad(d.load); return; }
@@ -207,7 +221,7 @@ server.on('upgrade', (req, sock) => {
   if (!key || String(req.headers.upgrade).toLowerCase() !== 'websocket') { sock.destroy(); return; }
   const acc = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acc + '\r\n\r\n');
-  const m = { uid: ++partySeq, room: null, slot: -1, load: cleanLoad(null), c: null, code: '', name: 'Player', icon: 0, inv: new Map(), party: null, msgT: [] };
+  const m = { uid: ++partySeq, room: null, slot: -1, load: cleanLoad(null), c: null, code: '', name: 'Player', icon: 0, inv: new Map(), party: null, msgT: [], reqT: [], flist: new Set() };
   online++;
   m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); partyLeave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
   const beat = setInterval(() => { if (!m.c.alive) { m.c.close(); return; } m.c.alive = false; m.c.ping(); }, 30000);
