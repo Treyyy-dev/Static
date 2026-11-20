@@ -2829,7 +2829,7 @@ function moodOf(p){
   var a=p.act;
   if(a==='ult'||a==='dunk'||a==='hang')return 'shout';if(a==='down'||p.stun>0)return 'hurt';if(a==='shoot')return 'focus';if(a==='emote')return 'happy';
   if(game.ult&&game.ult.p!==p)return p.team===game.ult.p.team?'happy':'hurt';
-  if(game.state==='menu')return p.sit?'happy':((LOBBY[p.L&&p.L.id]||LOBBY.k0).mood);
+  if(game.state==='menu')return (LOBBY[p.L&&p.L.id]||LOBBY.k0).mood;
   if(game.state==='over'||post)return game.score[p.team]>=game.score[1-p.team]?'happy':'sad';
   if(game.state==='dead'&&game.lastScorer>=0&&!game.tip)return game.lastScorer===p.team?'happy':'sad';
   if(p.tired||p.stam<0.25)return 'tired';if(p.guard)return 'fierce';
@@ -2956,8 +2956,9 @@ function animate(p,dt){
   var lx=ball.pos.x-p.x,lz=ball.pos.z-p.z,ly=ball.pos.y-(p.y+1.75*p.h);
   if(hasBall||p.act==='shoot'||p.act==='dunk'){lx=-p.x;lz=atkZ(p.team)-p.z;ly=RIMY-1.75*p.h-p.y;}
   var ld=Math.hypot(lx,lz);
-  var lobP=(game.state==='menu'&&!p.act&&!p.sit&&p===user&&hasBall)?(LOBBY[p.L&&p.L.id]||LOBBY.k0).pose:'drib';
-  if(lobP!=='drib'){var lq=lobbyAnim(lobP,o,t,p);crouch=lq.c;ikL=lq.l;ikR=lq.r;hxAdd=lq.hx;k=Math.min(1,dt*10);}
+  var lobP=(game.state==='menu'&&!p.act&&((p===user&&hasBall)||p.sit))?(LOBBY[p.L&&p.L.id]||LOBBY.k0).pose:'drib';
+  if(p.sit&&lobP==='drib')lobP='hips';                                                     // a friend in your lobby has no ball to bounce, so they stand hands on hips
+  if(lobP!=='drib'){var lq=lobbyAnim(lobP,o,t,p);crouch=lq.c;ikL=p.sit?null:lq.l;ikR=p.sit?null:lq.r;hxAdd=lq.hx;k=Math.min(1,dt*10);}
   else if(p.sit){                                             // on the bench in a friend's lobby
     crouch=0;hyO=0.5;o.tx=0.14+Math.sin(t*1.6)*0.02;o.ty=Math.sin(t*0.7)*0.06;o.tz=0;o.px=o.py=o.pz=0;o.bob=0;
     o.lLx=o.lRx=-1.5;o.kL=o.kR=1.5;o.lLz=0.16;o.lRz=-0.16;o.sLx=o.sRx=-0.6;o.eL=o.eR=-0.55;o.sLz=0.14;o.sRz=-0.14;
@@ -3470,7 +3471,7 @@ function startAudio(){try{if(!ac){var AC=window.AudioContext||window.webkitAudio
 function lobbyEmote(id){user.act='emote';user.emK=id;user.emT=3.6;user.face=0;ball.state='loose';ball.holder=null;ballMesh.visible=ballShadow.visible=false;}
 function endLobbyEmote(){if(user.act!=='emote'||game.state!=='menu')return;user.act=null;user.face=0;ball.state='held';ball.holder=user;ballMesh.visible=ballShadow.visible=true;}
 var benches=[];
-function lobbyMates(){ // the friends in your lobby sit on benches either side of your baller
+function lobbyMates(){ // the friends in your lobby stand either side of your baller, each in their own pose
   if(game.state!=='menu')return;
   var me=srv.code||save.code,others=srv.party?srv.party.list.filter(function(x){return x.code!==me;}).slice(0,2):[];
   for(var i=0;i<2;i++){
@@ -3479,7 +3480,7 @@ function lobbyMates(){ // the friends in your lobby sit on benches either side o
     var L=BYID[x.c];if(!L||L.kind!=='char')L=CHARS[0];
     if(p.lobC!==L.id){setLook(p,L,L.j,L.s,L.nc);p.lobC=L.id;}
     p.sit=true;p.x=user.x+(i?1.6:-1.6);p.z=user.z-0.3;p.y=0;p.vx=p.vz=0;p.face=i?-0.3:0.3;p.act=null;p.g.visible=p.shadow.visible=true;p.name=cleanName(x.name);tagSet(p);
-    try{if(!benches[i])benches[i]=add(scene,new T.BoxGeometry(1.0,0.42,0.5),toon(0x565b6e),INK2);benches[i].visible=true;benches[i].position.set(p.x,0.21,p.z-0.1);}catch(e){}
+    if(benches[i])benches[i].visible=false;
   }
 }
 function lobbyMatesOff(){
