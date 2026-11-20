@@ -12,7 +12,8 @@ To host it, turn on GitHub Pages for this repository (Settings → Pages → dep
 
 ## What's in it
 
-- Full-court 5v5 in an indoor arena, first to 21
+- 3v3 and 5v5 online (CPU fills empty spots), first to 21, on seven maps: arena, cage, backyard, forest, cave, beach, orbit
+- Daily, weekly and monthly challenges
 - Every baller has an ultimate: fill the meter, press ULT with the ball, and an 8 second scene plays that always scores
 - A 2.5D start screen, then a lobby with Home, Baller, Gacha and Settings tabs
 - Gacha with five banners: 17 anime-style characters, plus jump shots, dribbles and dunks to pull
