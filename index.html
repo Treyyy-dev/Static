@@ -237,7 +237,6 @@ body.post .btn,body.post #stickzone,body.post #role,body.post #bPause,body.post 
 body.cine #root::before,body.cine #root::after{content:'';position:absolute;left:0;right:0;height:11%;background:#000;z-index:4;pointer-events:none}
 body.cine #root::before{top:0}body.cine #root::after{bottom:0}
 body.cine .btn,body.cine #stickzone,body.cine #role,body.cine #bPause,body.cine #keys,body.cine #meter,body.cine #score{display:none!important}
-#cineSkip{display:none;position:absolute;right:14px;bottom:calc(11% + 10px);z-index:5;font-size:16px;padding:7px 18px}
 #vs{position:absolute;inset:0;z-index:9;display:none;align-items:center;justify-content:center;gap:3%;padding:0 3%;background:linear-gradient(105deg,#b77f00 0%,#ffb703 49.6%,#14121c 49.6%,#14121c 50.4%,#7a4dff 50.4%,#3d2399 100%)}
 .vsT{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
 .vsT h3{margin:0 0 2px;font-family:var(--display);font-size:clamp(16px,calc(var(--vw)*2.6),26px);color:var(--ink);text-shadow:none}
@@ -354,7 +353,6 @@ body.pauseset #settings{padding-top:0}
 <div id="title"><div class="tbg"></div><div class="tword">3v3</div><div id="tcast"></div><div class="thead"><h1>STATIC</h1></div><button class="go" id="tStart">Tap to start</button></div>
 <div id="boot" role="status"><div class="bootbox"><h2 id="bootT">Checking for updates</h2><p id="bootS"></p><div class="bootbar"><b id="bootBar"></b></div></div></div>
 <div class="ov" id="pause"><h1>PAUSED</h1><button class="go" id="pResume">Resume</button><button class="go" id="pSettings" style="background:var(--home);color:var(--ink)">Settings</button><button class="go" id="pQuit" style="background:var(--ink);color:var(--paper)">Quit to lobby</button></div>
-<button class="go" id="cineSkip">Skip</button>
 <div id="vs" role="status"><div class="vsT" id="vsL"></div><div id="vsM">VS</div><div class="vsT" id="vsR"></div></div>
 <div id="post"><div id="postTag"></div><div id="mvpBox"><small>MVP</small><b id="mvpN"></b><span id="mvpS"></span></div><button class="go" id="postSkip">Skip</button></div>
 <div class="ov" id="modes"><h1>GAME MODE</h1>
@@ -947,11 +945,17 @@ function sceneryStep(dt){
     if(r.cx===undefined)r.cx=r.x;
     if(i===0&&game.state==='dead'&&game.tipT>-90&&(game.tip||game.tipT>=-5)&&!post&&game.tipT!==-1){   // the jump-ball scene: walk out with the ball, look at each jumper, toss it up
       var rp=refTip(game.tipT),kk=Math.min(1,dt*12),mv=rp.walk?1:0;r.ph+=mv*dt*6.2;
-      var s0=Math.sin(r.ph)*mv,c0=Math.cos(r.ph)*mv,au=rp.toss?Math.max(0,1-(game.tipT-TOSS)*1.4):rp.arm;
-      r.cx=rp.x;r.z=rp.z;r.v=0;r.face=angLerp(r.face,rp.face,Math.min(1,dt*6));
-      L(j.hipL,'x',-s0*0.5,kk);L(j.hipR,'x',s0*0.5,kk);L(j.knL,'x',Math.max(0,c0)*0.8,kk);L(j.knR,'x',Math.max(0,-c0)*0.8,kk);
-      L(j.shL,'x',-0.95-1.85*au,kk);L(j.shR,'x',-0.95-1.85*au,kk);L(j.elL,'x',-1.25+1.05*au,kk);L(j.elR,'x',-1.25+1.05*au,kk);L(j.shL,'z',-0.18,kk);L(j.shR,'z',0.18,kk);L(j.torso,'x',0.04,kk);
-      r.g.position.set(r.cx,0,r.z);r.g.rotation.y=r.face;continue;
+      var s0=Math.sin(r.ph)*mv,c0=Math.cos(r.ph)*mv,since=game.tipT-TOSS,fc0,fs0,ro,k5=Math.min(1,dt*30);
+      r.cx=rp.x;r.z=rp.z;r.v=0;r.face=angLerp(r.face,rp.face,Math.min(1,dt*10));fc0=Math.cos(r.face);fs0=Math.sin(r.face);
+      L(j.hipL,'x',-s0*0.5-0.45*rp.dip,kk);L(j.hipR,'x',s0*0.5-0.45*rp.dip,kk);L(j.knL,'x',Math.max(0,c0)*0.8+0.9*rp.dip,kk);L(j.knR,'x',Math.max(0,-c0)*0.8+0.9*rp.dip,kk);
+      L(j.torso,'x',0.04+0.2*rp.dip-(since>0?0.12:0),kk);
+      r.g.position.set(r.cx,-0.1*rp.dip,r.z);r.g.rotation.y=r.face;
+      if(since<=0.3){                                    // both hands on the ball the whole way, and following it up after the release
+        var hx=since>0?rp.bx:ball.pos.x,hy=since>0?2.05:ball.pos.y,hz2=since>0?rp.bz:ball.pos.z;
+        ro={j:j,L:{h:1,w:1},face:r.face,x:r.cx,y:-0.1*rp.dip,z:r.z};
+        try{reachW(ro,'R',-1,hx-0.115*fc0,hy,hz2+0.115*fs0,0.31,k5);reachW(ro,'L',1,hx+0.115*fc0,hy,hz2-0.115*fs0,0.31,k5);}catch(e2){}
+      }else{L(j.shL,'x',-0.2,kk*0.4);L(j.shR,'x',-0.2,kk*0.4);L(j.elL,'x',-0.3,kk*0.4);L(j.elR,'x',-0.3,kk*0.4);L(j.shL,'z',0.12,kk);L(j.shR,'z',-0.12,kk);}
+      continue;
     }
     r.cx+=Math.max(-3.2*dt,Math.min(3.2*dt,r.x-r.cx));
     var tz=Math.max(-CL+1,Math.min(CL-1,ball.pos.z*0.85+(i?2.2:-2.2))),dz=tz-r.z,v=Math.max(-4.6,Math.min(4.6,dz*2.2));
@@ -1195,12 +1199,14 @@ function scored(team){
 var TOSS=9.0,cine={on:false,shot:-1};
 function tipJumpers(){var J=[null,null];players.forEach(function(p){var q=J[p.team];if(!q||p.h>q.h+1e-6||(Math.abs(p.h-q.h)<=1e-6&&p.human&&!q.human))J[p.team]=p;});return J;}   // tallest jumps; a real player wins a tie
 function refTip(t){ // where the referee and the ball are, t seconds into the jump-ball scene (the same on every device)
-  t=Math.max(0,t);var x0=-(WALLX-0.3),u=Math.min(1,t/4.6),e=u*u*(3-2*u),x=x0+(-1.3-x0)*e,face=PI/2,by=1.12,arm=0,walk=t<4.6?1:0;
+  t=Math.max(0,t);var x0=-(WALLX-0.3),u=Math.min(1,t/4.6),e=u*u*(3-2*u),x=x0+(-1.3-x0)*e,face=PI/2,by=1.12,dip=0,walk=t<4.6?1:0,fw=0.34;
   if(t>=4.6&&t<5.75)face=Math.atan2(1.3,-0.62);else if(t>=5.75&&t<6.9)face=Math.atan2(1.3,0.62);       // a look at each jumper
   if(t>=6.9){var v=Math.min(1,(t-6.9)/0.9);x=-1.3+0.5*v*v*(3-2*v);walk=t<7.8?1:0;}
-  if(t>=7.8){arm=Math.min(1,(t-7.8)/1.05);arm=arm*arm*(3-2*arm);by=1.12+0.86*arm;}                      // ball comes up
-  if(t>TOSS){var b=Math.min(1,(t-TOSS)/1.2);x=-0.8-1.6*b;walk=b<1?1:0;}                                  // and he backs out of the way
-  return {x:x,z:0,face:face,bx:x+0.34,by:by,bz:0,arm:arm,walk:walk,toss:t>TOSS};
+  if(t>=7.8&&t<8.25){var a1=(t-7.8)/0.45;by=1.12+0.2*a1*a1*(3-2*a1);}                                    // shows the ball
+  else if(t>=8.25&&t<8.6){var a2=(t-8.25)/0.35;a2=a2*a2*(3-2*a2);by=1.32-0.4*a2;dip=a2;}                // dips with bent knees
+  else if(t>=8.6){var a3=Math.min(1,(t-8.6)/0.4);by=0.92+1.06*a3*a3;dip=1-a3;fw=0.34+0.1*a3;}           // and drives it straight up out of both hands
+  if(t>TOSS){var b=Math.min(1,(t-TOSS-0.35)/1.2);if(b>0){x=-0.8-1.6*b;walk=b<1?1:0;}}                    // then backs out of the way
+  return {x:x,z:0,face:face,bx:x+Math.sin(face)*fw,by:by,bz:Math.cos(face)*fw,dip:dip,walk:walk,toss:t>TOSS};
 }
 function setupTip(){ // the game opens with a jump ball between the tallest baller on each side
   var J=tipJumpers(),side=[0,0];
@@ -1214,7 +1220,7 @@ function setupTip(){ // the game opens with a jump ball between the tallest ball
 function tipUpdate(dt){
   var T=game.tip,tt,rp;T.t+=dt;game.tipT=T.t;tt=T.t-TOSS;
   if(tt<0){rp=refTip(T.t);ball.pos.set(rp.bx,rp.by,rp.bz);ball.vel.set(0,0,0);return;}                 // the referee still has it
-  ball.pos.set(-0.46*(1-Math.min(1,tt/0.5)),1.98+6.1*tt-4.75*tt*tt,0);ball.vel.set(0,6.1-9.5*tt,0);     // tossed up between them
+  ball.pos.set(-0.36*(1-Math.min(1,tt/0.55)),1.98+5.6*tt-4.75*tt*tt,0);ball.vel.set(0,5.6-9.5*tt,0);    // leaves his hands and drifts over the middle
   if(!T.up&&tt>=0.38){T.up=true;T.J.forEach(function(p){p.act='jump';p.actT=0;p.vy=5.0;p.y=0.001;});}
   if(tt>=0.86){                                                                         // the taller baller wins it more often
     var a=T.J[0],b=T.J[1],w=R()<Math.max(0.25,Math.min(0.75,0.5+(a.h-b.h)*2.5))?a:b,ms=mates(w),m=ms[(R()*ms.length)|0];
@@ -1224,7 +1230,7 @@ function tipUpdate(dt){
 }
 function cineSet(v){
   if(cine.on===v)return;cine.on=v;cine.shot=-1;document.body.classList[v?'add':'remove']('cine');
-  $('cineSkip').style.display=v&&!net.on?'block':'none';if(!v)resize();
+  if(!v)resize();
 }
 function tipCam(dt){ // four shots: the walk in, a look at each jumper, then low and wide for the toss
   var t=Math.max(0,game.tipT),rp=refTip(t),J=tipJumpers(),shot=t<4.6?0:t<5.75?1:t<6.9?2:3,px,py,pz,lx,ly,lz,fov;
@@ -1487,7 +1493,7 @@ function peerOpen(){
     net.peer.on('disconnected',function(){try{if(net.peer&&!net.peer.destroyed)net.peer.reconnect();}catch(e){}});
   });
 }
-function lobbyText(n,cd){return n<2?'Looking for players. You are the only one here so far.':(n+' of 6 players here.'+(cd>0?' Match starts in '+Math.ceil(cd)+' seconds. Empty spots are filled by the CPU.':''));}
+function lobbyText(n,cd){return n<2?('Looking for players. You are the only one here so far.'+(cd>0?' If nobody joins, the match starts in '+Math.ceil(cd)+' seconds with CPU players.':'')):(n+' of 6 players here.'+(cd>0?' Match starts in '+Math.ceil(cd)+' seconds. Empty spots are filled by the CPU.':''));}
 function mmTry(){ // is somebody already waiting in room k?
   if(!net.searching||net.conn||net.hostPeer)return;
   var c,got=false;mmStatus('Looking for players');
@@ -2067,6 +2073,11 @@ function animate(p,dt){
     kL:Math.max(0,c)*1.45*sf*kb,kR:Math.max(0,-c)*1.45*sf*kb,
     px:Math.max(-0.1,Math.min(0.14,0.012*A.acc))+0.05*sf*(bk?-1:1),py:-s*0.13*sf,
     pz:Math.max(-0.22,Math.min(0.22,-0.035*A.w*(0.3+sf)))+Math.sin(t*0.8)*0.03*idle,bob:-Math.cos(p.phase*2)*0.022*sf};
+  // feeling: sprinters pump their arms and knees, tired bodies sag and heave, and the whole body banks into a hard cut
+  A.accL=(A.accL||0)+(Math.max(-14,Math.min(14,(vl-(A.pvl||0))/dtt))-(A.accL||0))*Math.min(1,dt*6);A.pvl=vl;
+  var bank=Math.max(-0.17,Math.min(0.17,-0.017*A.accL*(0.4+sf)-0.02*A.w*sf)),wind=(p.tired||p.stam<0.25)?1:0;
+  if(p.sprinting&&sf>0.5){o.tx+=0.13;o.sLx*=1.35;o.sRx*=1.35;o.eL-=0.25;o.eR-=0.25;o.kL*=1.15;o.kR*=1.15;o.lLx*=1.12;o.lRx*=1.12;o.bob*=1.6;}
+  if(wind){o.tx+=0.13+0.05*Math.sin(t*4.4);o.bob-=0.012*idle;}
   // eyes: on the rim with the ball, otherwise on the ball
   var lx=ball.pos.x-p.x,lz=ball.pos.z-p.z,ly=ball.pos.y-(p.y+1.75*p.h);
   if(hasBall||p.act==='shoot'||p.act==='dunk'){lx=-p.x;lz=atkZ(p.team)-p.z;ly=RIMY-1.75*p.h-p.y;}
@@ -2135,6 +2146,10 @@ function animate(p,dt){
       else{o.sRx=-0.55+o.sRx*0.3;o.eR=-1.15;o.sRz=-0.55-0.08*Math.sin(t*3);}
     }
     if(mvv){o.pz=Math.max(-0.3,Math.min(0.3,-vl*0.045));o.lLz=0.18;o.lRz=-0.18;}
+    var nd=9;opps(p.team).forEach(function(q2){var d3=pd(p,q2);if(d3<nd)nd=d3;});
+    if(nd<1.7&&drib){var shl=1-nd/1.7;crouch+=0.1*shl;o.tx+=0.1*shl;                 // defender close: get low and put the off arm between them and the ball
+      if(drib<0){o.sLx=o.sLx*(1-shl)-0.95*shl;o.eL=o.eL*(1-shl)-1.3*shl;o.sLz=o.sLz*(1-shl)+0.8*shl;}
+      else{o.sRx=o.sRx*(1-shl)-0.95*shl;o.eR=o.eR*(1-shl)-1.3*shl;o.sRz=o.sRz*(1-shl)-0.8*shl;}}
   }else if(game.state==='dead'&&game.lastScorer>=0){
     if(game.lastScorer===p.team){
       var w1=Math.sin(t*10);
@@ -2143,6 +2158,8 @@ function animate(p,dt){
       else{o.sLx=o.sRx=-1.1;o.eL=o.eR=-1.9-w1*0.2;o.sLz=0.7;o.sRz=-0.7;o.tx=-0.12;}                  // flex
       o.bob=Math.abs(Math.sin(t*5))*0.07;crouch=0.1;
     }else{o.tx=0.28;o.sLx=o.sRx=0.25;o.eL=o.eR=-1.35;o.sLz=0.55;o.sRz=-0.55;hxAdd=0.35;}             // hands on hips, head down
+  }else if(wind&&idle>0.8&&!hasBall&&live){
+    crouch=0.2;o.tx=0.6+0.05*Math.sin(t*4.4);o.sLx=o.sRx=-0.6;o.eL=o.eR=-0.12;o.sLz=0.16;o.sRz=-0.16;hxAdd=0.3;      // gassed: hands on knees, sucking wind
   }else if(p.guard){
     var gw=Math.sin(t*5)*0.06;crouch=0.42;o.tx=0.24;o.ty*=0.3;                      // sit low, arms out wide
     o.sLx=o.sRx=-0.35;o.sLz=1.25+gw;o.sRz=-1.25-gw;o.eL=o.eR=-0.3;o.lLz=0.3;o.lRz=-0.3;o.lLx*=0.4;o.lRx*=0.4;o.kL*=0.5;o.kR*=0.5;
@@ -2166,6 +2183,7 @@ function animate(p,dt){
       crouch+=0.12*idle;o.tx+=0.08*idle;                                   // ready to catch
     }
   }
+  if(live&&!hasBall&&!p.act&&(onD||onO)&&!wind)o.bob+=Math.abs(Math.sin(t*5.2))*0.03*idle;   // on the toes, ready to go
   if(A.land>0)crouch+=0.4*(A.land/0.22);                                   // absorb the landing
   o.lLx-=crouch;o.lRx-=crouch;o.kL+=2*crouch;o.kR+=2*crouch;
   var hyv=1-0.9*(1-Math.cos(crouch))+o.bob;
@@ -2193,7 +2211,7 @@ function animate(p,dt){
   handPose(p,drib);
   if(flick){j.wrR.rotation.x=0.9*flick;j.wrL.rotation.x=0.35*flick;}
   clothPhys(p,dt);
-  p.g.rotation.order='YXZ';p.g.rotation.set(tilt,p.face,roll);p.g.position.set(p.x,p.y+0.13*Math.min(1,-tilt/1.5),p.z);
+  p.g.rotation.order='YXZ';p.g.rotation.set(tilt,p.face,roll+(tilt?0:bank));p.g.position.set(p.x,p.y+0.13*Math.min(1,-tilt/1.5),p.z);
   p.shadow.position.set(p.x,0.025,p.z);var sc=Math.max(0.5,1-p.y*0.35);p.shadow.scale.set(sc,sc,sc);
 }
 
@@ -2980,7 +2998,7 @@ $('pName').addEventListener('change',function(){if(!cleanName(this.value))this.v
 $('chatBack').addEventListener('click',function(){chatWith='';chatRender();friendsRender();});$('chatSend').addEventListener('click',chatSend);$('chatIn').addEventListener('keydown',function(e){if(e.key==='Enter')chatSend();});
 $('invY').addEventListener('click',invJoin);$('invN').addEventListener('click',function(){srv.inv=null;invRender();});
 $('postSkip').addEventListener('click',postDone);
-$('cineSkip').addEventListener('click',function(){if(game.tip&&!net.on&&game.tip.t<TOSS-0.5)game.tip.t=TOSS-0.5;});
+
 $('mmCancel').addEventListener('click',function(){mmStop();$('mm').style.display='none';});
 $('mmStart').addEventListener('click',netStart);
 $('bPause').addEventListener('click',function(){setPause(true);});
