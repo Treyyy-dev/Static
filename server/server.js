@@ -4,7 +4,7 @@
 // if that player leaves, the server hands the match to another player.
 'use strict';
 const http = require('http'), crypto = require('crypto');
-const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, WIN = 21, WAIT = +process.env.WAIT || 30;   // seconds a search waits before the CPU fills the match
+const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, WIN = 21, WAIT = +process.env.WAIT || 25;   // seconds a search waits before the CPU fills the match
 
 /* ---------- tiny WebSocket layer ---------- */
 function frame(op, buf) {
@@ -62,7 +62,7 @@ function codeOf(pid) { return crypto.createHash('sha256').update('static:' + pid
 function cleanName(v) { return (typeof v === 'string' ? v : '').replace(/[\u0000-\u001f<>&]/g, '').slice(0, 18) || 'Player'; }
 function cleanIcon(v) { v = v | 0; return v >= 0 && v < 64 ? v : 0; }
 function cleanText(v) { return (typeof v === 'string' ? v : '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 140); }
-function pub(m) { return { code: m.code, name: m.name, icon: m.icon }; }
+function pub(m) { return { code: m.code, name: m.name, icon: m.icon, c: m.load ? m.load.c : '' }; }
 
 /* a lobby (party): up to 3 friends who queue together and play on the same team */
 function partyTell(p) { const list = p.members.map(pub); p.members.forEach(x => x.c.send({ t: 'party', leader: p.members[0].code, list })); }
@@ -159,7 +159,7 @@ function onMessage(m, d) {
     if (m.code && x && x !== m) x.c.send({ t: 'fadd', from: pub(m) });
     return;
   }
-  if (d.t === 'load') { m.load = cleanLoad(d.load); return; }
+  if (d.t === 'load') { const was = m.load ? m.load.c : ''; m.load = cleanLoad(d.load); if (m.party && m.load.c !== was) partyTell(m.party); return; }
   if (d.t === 'invite') {                                // ask a friend into your lobby
     const x = typeof d.to === 'string' ? byCode.get(d.to) : null;
     if (!m.code || !x || x === m || r || (x.room && x.room.started) || (m.party && m.party.members.length >= 3) || (m.party && m.party.members.indexOf(x) >= 0)) { m.c.send({ t: 'noinvite' }); return; }
