@@ -56,7 +56,17 @@ function attach(sock, onMsg, onClose) {
 
 /* ---------- rooms ---------- */
 let waiting = null, rooms = new Set(), online = 0;
-function newRoom() { const r = { members: [], started: false, cd: -1, host: null, timer: null }; rooms.add(r); return r; }
+const byCode = new Map();                                // friend code -> connected player
+function newRoom(priv) { const r = { members: [], started: false, cd: -1, host: null, timer: null, priv: !!priv }; rooms.add(r); return r; }
+function codeOf(pid) { return crypto.createHash('sha256').update('static:' + pid).digest('hex').slice(0, 8).toUpperCase(); }
+function cleanName(v) { return (typeof v === 'string' ? v : '').replace(/[\u0000-\u001f<>&]/g, '').slice(0, 18) || 'Player'; }
+function cleanIcon(v) { v = v | 0; return v >= 0 && v < 64 ? v : 0; }
+function join(r, m, load) {                              // put a player into a room that has not started
+  m.room = r; m.load = cleanLoad(load); r.members.push(m);
+  if (r.members.length === 2) { r.cd = 10; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }
+  else if (r.members.length > 2) r.cd = Math.max(r.cd, 5);
+  if (r.members.length >= 6) start(r); else lobby(r);
+}
 function lobby(r) { r.members.forEach((m, i) => m.c.send({ t: 'lobby', n: r.members.length, cd: r.cd, first: i === 0 })); }
 function tickLobby(r) {
   if (r.started || r.cd <= 0) return;
@@ -89,13 +99,42 @@ function cleanLoad(l) {
 function onMessage(m, d) {
   const r = m.room;
   if (d.t === 'ping') return;
+  if (d.t === 'hello') {                                 // who this is: the private id never leaves the server, friends see only the code
+    if (m.code || typeof d.pid !== 'string' || d.pid.length < 16 || d.pid.length > 64) return;
+    m.code = codeOf(d.pid); m.name = cleanName(d.name); m.icon = cleanIcon(d.icon);
+    byCode.set(m.code, m); m.c.send({ t: 'you', code: m.code });
+    return;
+  }
+  if (d.t === 'prof') { m.name = cleanName(d.name); m.icon = cleanIcon(d.icon); return; }
+  if (d.t === 'friends') {
+    const codes = Array.isArray(d.codes) ? d.codes.slice(0, 50) : [];
+    m.c.send({ t: 'fstat', list: codes.filter(c => typeof c === 'string' && c.length === 8).map(c => {
+      const x = byCode.get(c); return x ? { code: c, on: 1, name: x.name, icon: x.icon, busy: x.room && x.room.started ? 1 : 0 } : { code: c, on: 0 };
+    }) });
+    return;
+  }
+  if (d.t === 'invite') {
+    const x = typeof d.to === 'string' ? byCode.get(d.to) : null;
+    if (!m.code || !x || x === m || (x.room && x.room.started) || (r && r.started)) { m.c.send({ t: 'noinvite' }); return; }
+    m.inv.set(x.code, Date.now()); m.invLoad = cleanLoad(d.load);
+    x.c.send({ t: 'invited', from: { code: m.code, name: m.name, icon: m.icon } });
+    return;
+  }
+  if (d.t === 'accept') {
+    const x = typeof d.from === 'string' ? byCode.get(d.from) : null, at = x && m.code ? x.inv.get(m.code) : 0;
+    if (!x || !at || Date.now() - at > 120000 || (x.room && x.room.started) || (r && r.started)) { m.c.send({ t: 'nojoin' }); return; }
+    x.inv.delete(m.code);
+    if (r) leave(m);
+    let pr = x.room;
+    if (!pr || !pr.priv || pr.members.length >= 6) { if (pr) leave(x); pr = newRoom(true); join(pr, x, x.invLoad); }
+    join(pr, m, d.load);
+    return;
+  }
+  if (d.t === 'leave') { if (r) leave(m); return; }
   if (d.t === 'find') {
     if (r) return;
-    if (!waiting || waiting.started || waiting.members.length >= 6) waiting = newRoom();
-    const w = waiting; m.room = w; m.load = cleanLoad(d.load); w.members.push(m);
-    if (w.members.length === 2) { w.cd = 10; w.timer = setInterval(() => tickLobby(w), 1000); }
-    else if (w.members.length > 2) w.cd = Math.max(w.cd, 5);
-    if (w.members.length >= 6) start(w); else lobby(w);
+    if (!waiting || waiting.started || waiting.members.length >= 6) waiting = newRoom(false);
+    join(waiting, m, d.load);
     return;
   }
   if (!r) return;
@@ -117,9 +156,9 @@ server.on('upgrade', (req, sock) => {
   if (!key || String(req.headers.upgrade).toLowerCase() !== 'websocket') { sock.destroy(); return; }
   const acc = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acc + '\r\n\r\n');
-  const m = { room: null, slot: -1, load: null, c: null };
+  const m = { room: null, slot: -1, load: null, c: null, code: '', name: 'Player', icon: 0, inv: new Map(), invLoad: null };
   online++;
-  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); });
+  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
   const beat = setInterval(() => { if (!m.c.alive) { m.c.close(); return; } m.c.alive = false; m.c.ping(); }, 30000);
 });
 server.listen(PORT, () => console.log('Static server listening on ' + PORT));
