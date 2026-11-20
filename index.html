@@ -138,6 +138,7 @@ body.narrow #brand{display:none}
 .how{margin:2px 0;padding:0;list-style:none;font-size:15px;line-height:1.4}
 .how b{color:var(--home)}
 #nav,#coins,#brand{z-index:4}
+#coins{background:none!important;border:0!important;box-shadow:none!important;color:var(--paper)!important;font-size:20px!important;padding:0!important;text-shadow:2px 2px 0 var(--ink)}
 #shop{padding:58px 0 0;pointer-events:auto;background:var(--ink);z-index:3}
 #baller,#mvp{padding:58px 0 0;z-index:3;background:linear-gradient(var(--ink) 58px,transparent 58px)}
 #shopSheet{width:100%;height:100%;max-height:none;border:0;border-radius:0;padding:8px 16px 12px;background:var(--ink)}
@@ -441,7 +442,7 @@ if(isTouch)document.body.classList.add('touch');
 window.addEventListener('resize',resize);
 
 /* ---------- cel shading kit ---------- */
-var grad=new T.DataTexture(new Uint8Array([95,95,110,255, 175,175,185,255, 255,255,255,255]),3,1,T.RGBAFormat);
+var grad=new T.DataTexture(new Uint8Array([84,82,104,255, 148,146,168,255, 214,212,224,255, 255,255,255,255]),4,1,T.RGBAFormat);   // four bands: deep shadow, shade, light, highlight
 grad.minFilter=grad.magFilter=T.NearestFilter;grad.generateMipmaps=false;grad.needsUpdate=true;
 var toonCache={};
 function toon(color){
@@ -469,6 +470,7 @@ function cv(w,h){var c=document.createElement('canvas');c.width=w;c.height=h;ret
 /* ---------- lights & sky ---------- */
 var hemi=new T.HemisphereLight(0xfff1d6,0x4a4660,0.62);scene.add(hemi);
 var sun=new T.DirectionalLight(0xfff0d0,0.85);sun.position.set(-9,16,-5);scene.add(sun);
+var rimL=new T.DirectionalLight(0xbfd4ff,0.3);rimL.position.set(10,7,9);scene.add(rimL);   // a cool back light picks out edges
 var THEMES={
   bg0:{sky:['#2f6fdb','#2f6fdb','#4a8ef0','#4a8ef0','#79b6f7','#a9d3f7','#ffd9a0','#ffb37a'],hemi:[0xfff1d6,0x4a4660,0.62],sun:[0xfff0d0,0.85],ground:0x2c2d36,
     pal:{asph:'#3b3d49',s1:'#33353f',s2:'#454857',apron:'#7d2e2a',court:'#2b78d4',arc:'#22a6a1',lane:'#ef5a3c',circle:'#ffb703',line:'#fff6e3',ink:'#14121c'}},
@@ -780,8 +782,12 @@ try{
   G.shoeW=mergeGeo([bx(0.109,0.05,0.075,0,-0.472,0.162),bx(0.066,0.008,0.016,0,-0.409,0.075),bx(0.066,0.008,0.016,0,-0.409,0.108),bx(0.066,0.008,0.016,0,-0.409,0.141),bx(0.05,0.05,0.016,0,-0.392,0.03,-0.35)]);
   G.shoeA=mergeGeo([bx(0.109,0.072,0.05,0,-0.447,-0.052),bx(0.004,0.028,0.14,0.0545,-0.452,0.055),bx(0.004,0.028,0.14,-0.0545,-0.452,0.055),bx(0.03,0.04,0.012,0,-0.4,-0.078)]);
   G.shoeD=mergeGeo([bx(0.119,0.012,0.292,0,-0.525,0.06),bx(0.1,0.028,0.115,0,-0.404,-0.012),bx(0.119,0.014,0.04,0,-0.512,0.19)]);
+  var toe=new T.SphereGeometry(0.058,12,8);toe.scale(1,0.78,1.25);toe.translate(0,-0.47,0.172);     // rounded toe box
+  var heel=new T.SphereGeometry(0.056,10,8);heel.scale(1,1.05,0.8);heel.translate(0,-0.452,-0.058);  // cupped heel
+  var cuff=new T.CylinderGeometry(0.058,0.062,0.07,10);cuff.translate(0,-0.385,-0.012);              // padded ankle cuff
+  G.shoeS=mergeGeo([toe,heel,cuff]);
   if(!G.shoeW.attributes.position.count)throw 0;
-}catch(e){G.shoeW=G.shoeA=G.shoeD=null;}
+}catch(e){G.shoeW=G.shoeA=G.shoeD=G.shoeS=null;}
 try{G.handR=buildHandGeo(1);G.handL=buildHandGeo(-1);G.handRo=buildHandGeo(1,true);G.handLo=buildHandGeo(-1,true);G.fingers=true;}catch(e){G.handR=G.handL=G.hand;G.fingers=false;}
 function numTex(n,col){var c=cv(64,64),g=c.getContext('2d');g.font='900 50px Arial Black,Arial';g.textAlign='center';g.textBaseline='middle';
   g.lineWidth=6;g.strokeStyle='#14121c';g.strokeText(n,32,35);g.fillStyle=col;g.fillText(n,32,35);return new T.CanvasTexture(c);}
@@ -859,9 +865,11 @@ function buildHuman(L,jersey,shorts,numCol){
     add(kn,G.knee,pm,null).scale.setScalar(pw);add(kn,G.calf,pm,INK).scale.set(L.pants?pw*(L.widePants?1.35:1.12):1,L.widePants?0.92:1,L.pants?pw*(L.widePants?1.35:1.12):1);
     if(L.boots){var bt=add(kn,G.sock,toon(L.boots),INK);bt.position.y=-0.2;bt.scale.set(1.55,1.9,1.55);}
     add(kn,G.sock,white,null).position.y=-0.3;
-    add(kn,G.shoe,toon(L.shoe),INK).position.set(0,-0.455,0.06);
-    add(kn,G.sole,white,null).position.set(0,-0.505,0.06);
-    if(G.shoeW){add(kn,G.shoeW,white,null);add(kn,G.shoeA,toon(L.shoeA||L.j||jersey||0xff4d3d),null);add(kn,G.shoeD,dark,null);}   // toe cap and laces, heel and side stripes, outsole and collar
+    var an=new T.Group();an.position.set(0,-0.43,0);kn.add(an);j['an'+a[0]]=an;                 // the ankle: the foot can stay flat or push off
+    add(an,G.shoe,toon(L.shoe),INK).position.set(0,-0.025,0.06);
+    add(an,G.sole,white,null).position.set(0,-0.075,0.06);
+    if(G.shoeW){var sw1=add(an,G.shoeW,white,null),sw2=add(an,G.shoeA,toon(L.shoeA||L.j||jersey||0xff4d3d),null),sw3=add(an,G.shoeD,dark,null);sw1.position.y=sw2.position.y=sw3.position.y=0.43;
+      if(G.shoeS){var sw4=add(an,G.shoeS,toon(L.shoe),INK);sw4.position.y=0.43;}}   // toe cap and laces, heel and side stripes, outsole and collar
     j['hip'+a[0]]=hp;j['kn'+a[0]]=kn;
   });
   if(L.noNum)nb.visible=false;
@@ -1254,6 +1262,7 @@ function scored(team){
   var by=ball.shooter&&ball.shooter.team===team?players.indexOf(ball.shooter):-1;markPlay(team,by,ball.pts,!!ball.dunk,ball.dunkName);
   scoreBanner(team);if(net.on&&net.role==='host')netCast({t:'e',k:'score',team:team,pts:ball.pts,dunk:ball.dunk?1:0,name:ball.dunkName||'',by:by});
   if(game.practice||game.score[team]>=WIN){game.state='dead';game.deadT=game.practice?0.8:1.7;game.next=1-team;return;}   // only the winning basket stops play
+  game.safe=1-team;game.safeT=0;game.front=false;
   game.poss=1-team;game.clock=24;game.fetch={team:1-team,t:0,p:null};players.forEach(function(q){q.spot=-1;});          // play on: the other side has to go and get it
 }
 var TOSS=9.0,cine={on:false,shot:-1},mashOn=false;
@@ -1311,7 +1320,7 @@ function setupInbound(team){ // every possession starts with a pass in from behi
     p.face=p.team===team?(s>0?0:PI):(s>0?PI:0);
   });
   ball.dead=false;ball.wasShot=false;game.poss=-1;giveBall(ib);game.clock=24;game.state='play';
-  game.tip=null;game.tipT=-1;game.fetch=null;game.inb=ib;ib.inbT=0;ib.inbWait=0.9+R()*0.8;sayTo(ib,'PASS IT IN','',1.2);
+  game.tip=null;game.tipT=-1;game.fetch=null;game.safe=-1;game.front=false;game.inb=ib;ib.inbT=0;ib.inbWait=0.9+R()*0.8;sayTo(ib,'PASS IT IN','',1.2);
   camYaw=camTargetYaw();
 }
 
@@ -1330,15 +1339,16 @@ function isChaser(p){
 function bestMate(p){
   var best=null,bs=-99;mates(p).forEach(function(m){
     var s=Math.min(3,nearestOpp(m).d)+(22-hoopDist(m))*0.09+(m.human?0.7:0)+R()*0.6;
-    if(m.stun>0)s-=5;if(s>bs){bs=s;best=m;}});return best;
+    if(m.stun>0)s-=5;if(backOf(m))s-=40;if(s>bs){bs=s;best=m;}});return (best&&backOf(best)&&game.inb!==p)?null:best;   // never throw it back over half court
 }
+function backOf(m){return game.front&&game.frontT===m.team&&Math.sign(atkZ(m.team))*m.z<1.2;}
 function aiHandler(p,dt){
   var hz=atkZ(p.team),d=hoopDist(p),n=nearestOpp(p),sg=Math.sign(hz);
   p.decT-=dt;
   if(p.decT<=0){
     p.decT=0.25;
     var cm=null;mates(p).forEach(function(m2){if(m2.human&&m2.callT>0)cm=m2;});
-    if(cm&&p.holdT>0.35){doPass(p,cm);cm.callT=0;return;}
+    if(cm&&p.holdT>0.35&&!backOf(cm)){doPass(p,cm);cm.callT=0;return;}
     if(d<p.dunkR&&p.holdT>0.2&&(n.d>0.85||R()<0.4)&&R()<0.75){startDunk(p);return;}
     if(n.p&&n.d<1.7&&p.moveCd<=0&&d>3.5&&d<11&&R()<0.22){
       var qx=-p.x/(d||1),qz=(hz-p.z)/(d||1);
@@ -1377,7 +1387,7 @@ function aiDefend(p,dt){
   p.stealCd-=dt;
   if(isH&&ball.state==='held'&&dm<1.25&&man.immune<=0&&p.stealCd<=0&&!man.act){
     p.stealCd=0.5;
-    if(R()<(man.human?0.022*DSTEAL:0.016)){giveBall(p);p.stl=(p.stl||0)+1;sayAll('STEAL!',p.team,0.8,'steal');man.stun=0.35;}
+    if(game.safe!==man.team&&R()<(man.human?0.022*DSTEAL:0.016)){giveBall(p);p.stl=(p.stl||0)+1;sayAll('STEAL!',p.team,0.8,'steal');man.stun=0.35;}
   }
 }
 function inbPass(p){var m=null;mates(p).forEach(function(q){if(q.human&&q.callT>0)m=q;});if(!m)m=bestMate(p);if(!m)m=mates(p)[0];doPass(p,m);}
@@ -1484,7 +1494,7 @@ function humanThink(p,I,dt){ // one real player's input, whether it came from th
     else if(onO&&(ball.state==='held'||ball.state==='pass')){p.callT=1.5;sayTo(p,'CALLING FOR IT','',0.5);}
     else if(p.stealCd<=0){
       p.stealCd=0.7;var h=ball.state==='held'?ball.holder:null;
-      if(h&&h.team!==p.team&&pd(p,h)<1.6&&h.immune<=0&&!h.act&&R()<0.3){giveBall(p);p.stl=(p.stl||0)+1;h.stun=0.4;sayAll('STEAL!',p.team,0.8,'steal');}
+      if(h&&h.team!==p.team&&game.safe!==h.team&&pd(p,h)<1.6&&h.immune<=0&&!h.act&&R()<0.3){giveBall(p);p.stl=(p.stl||0)+1;h.stun=0.4;sayAll('STEAL!',p.team,0.8,'steal');}
       else{p.stun=0.28;}
     }
   }
@@ -1859,7 +1869,7 @@ function netStart(){
   netBegin(list,0,21);
 }
 function netBegin(list,me,win){
-  game.fetch=null;game.sc=0;var nsd=nameSeed(list);lobbyMatesOff();game.map='bg'+(nsd%4);themeSet(game.map);   // everyone in the match gets the same map
+  game.fetch=null;game.sc=0;game.safe=-1;game.front=false;game.frontT=-1;var nsd=nameSeed(list);lobbyMatesOff();game.map='bg'+(nsd%4);themeSet(game.map);   // everyone in the match gets the same map
   postClean();recReset();net.on=true;net.searching=false;net.snap=null;net.out=null;$('mm').style.display='none';if(!net.win0)net.win0=WIN;WIN=21;
   players.forEach(function(p,s){
     var r=list[s];p.net=null;p.I=null;p.isUser=s===me;p.stam=1;p.tired=false;p.stamCd=0;
@@ -1996,6 +2006,8 @@ function movePlayer(p,dt){
     }else if(p.actT>=0.22&&!(p.human&&p.hold))p.act='fall';
   }else{
     var a=p.act==='shoot'?14:(p.y>0?2:10),kk=Math.min(1,a*dt);
+    if(!p.human&&game.front&&game.frontT===p.team&&game.state==='play'&&!game.practice){var hsg=Math.sign(atkZ(p.team)),hz5=p.z*hsg;   // CPU players know the half court rule: once it is over, nobody drifts back
+      if(hz5<1.3&&p.wz*hsg<0)p.wz=0;if(hz5<0.8)p.wz=hsg*p.spd*0.8;}
     p.vx+=(p.wx-p.vx)*kk;p.vz+=(p.wz-p.vz)*kk;
     p.x+=p.vx*dt;p.z+=p.vz*dt;
     if(p.act==='shoot'&&p.y>0){p.x+=p.jdx*dt;p.z+=p.jdz*dt;}
@@ -2076,7 +2088,7 @@ function updateBall(dt){
       b.pos.x+=pdx/pdl*pst;b.pos.z+=pdz/pdl*pst;b.pos.y=b.y0+(pty-b.y0)*ps+b.lob*4*ps*(1-ps);b.vel.set(pdx/pdl*b.pspd,0,pdz/pdl*b.pspd);
       var os=opps(b.passFrom.team);
       for(i=0;i<os.length;i++){var o=os[i];
-        if(ps>0.15&&ps<0.92&&b.tried.indexOf(o)<0&&o.stun<=0&&o.act!=='down'&&b.pos.y<o.y+2.3*o.h&&hd(o.x,o.z,b.pos.x,b.pos.z)<(o.guard?1.2:0.8)){b.tried.push(o);
+        if(game.safe!==b.passFrom.team&&ps>0.15&&ps<0.92&&b.tried.indexOf(o)<0&&o.stun<=0&&o.act!=='down'&&b.pos.y<o.y+2.3*o.h&&hd(o.x,o.z,b.pos.x,b.pos.z)<(o.guard?1.2:0.8)){b.tried.push(o);
           if(R()<(o.human?0.85:0.3)){giveBall(o);o.stl=(o.stl||0)+1;sayAll('PICKED OFF!',o.team,0.9,'steal');break;}}}
     }
   }else if(b.state==='tip'){ // the jump ball places it
@@ -2090,9 +2102,10 @@ function updateBall(dt){
       var fq=null,fqd=1.0;players.forEach(function(q){if(q.team!==game.fetch.team||q.stun>0||q.act)return;var d7=hd(q.x,q.z,b.pos.x,b.pos.z);if(d7<fqd){fqd=d7;fq=q;}});
       if(fq){b.dead=false;giveBall(fq);game.fetch.p=fq;fq.immune=1;sayTo(fq,'TAKE IT BEHIND THE LINE','',1.5);}
     }
-    if(!b.dead&&b.noPick<=0&&game.state==='play'){
+    if(!b.dead&&b.noPick<=0&&game.state==='play'){var safeT=(game.safe>=0)?game.safe:-1;
       var best=null,bd=0.85;
       for(i=0;i<players.length;i++){p=players[i];if(p.stun>0||p.act==='dunk'||p.act==='fall'||p.act==='down')continue;
+        if(safeT>=0&&p.team!==safeT)continue;                 // hands off until it is over half court
         var d=hd(p.x,p.z,b.pos.x,b.pos.z);
         if(d<bd&&b.pos.y<2.3*p.h+p.y+0.1&&b.pos.y>p.y-0.3){bd=d;best=p;}}
       if(best){if(b.wasShot)best.reb=(best.reb||0)+1;giveBall(best);if(best.human&&b.pos.y>1.6)sayTo(best,'BOARD!','var(--good)',0.6);}
@@ -2143,7 +2156,9 @@ function clothPhys(p,dt){
   var ph=p.phys;if(!ph||!ph.length)return;
   var s=Math.sin(p.face),c=Math.cos(p.face),vf=p.vx*s+p.vz*c,vl=p.vx*c-p.vz*s,h=Math.min(dt,0.033);
   var w=Math.max(-8,Math.min(8,angD(p.face,p.pface)/Math.max(dt,0.004)));p.pface=p.face;
-  var vy=p.y>0?p.vy:0,spd=Math.hypot(vf,vl),fl=Math.min(1,spd/3),t=game.time+p.idx*1.7+p.team*3.1;
+  var gt=game.time,gust=0.55+0.45*Math.sin(gt*0.6)+0.3*Math.sin(gt*1.7+1.3),wxw=0.85*gust*1.9,wzw=0.5*gust*1.9;   // a breeze across the court that comes in gusts
+  vf-=wxw*s+wzw*c;vl-=wxw*c-wzw*s;
+  var vy=p.y>0?p.vy:0,spd=Math.hypot(vf,vl),fl=Math.min(1,Math.max(spd/3,0.3+0.3*gust)),t=game.time+p.idx*1.7+p.team*3.1;
   for(var i=0;i<ph.length;i++){
     var q=ph[i],o=q.o,big=q.max>0.3?1:0.3;
     var tx=q.rx0+q.kx*vf+(q.ky||0)*Math.max(0,-vy)+Math.sin(t*13+i*2.1)*0.05*fl*big;
@@ -2261,7 +2276,19 @@ function animate(p,dt){
       if(drib<0){o.sLx=-0.55+o.sLx*0.3;o.eL=-1.15;o.sLz=0.55+0.08*Math.sin(t*3);}
       else{o.sRx=-0.55+o.sRx*0.3;o.eR=-1.15;o.sRz=-0.55-0.08*Math.sin(t*3);}
     }
-    if(mvv){o.pz=Math.max(-0.3,Math.min(0.3,-vl*0.045));o.lLz=0.18;o.lRz=-0.18;}
+    if(mvv){o.pz=Math.max(-0.3,Math.min(0.3,-vl*0.045));o.lLz=0.18;o.lRz=-0.18;
+      var mu=Math.min(1,p.actT/(p.mvT||0.3)),me=Math.sin(mu*PI),sd2=vl>0.3?1:vl<-0.3?-1:(p.hand>0?1:-1),pth=p.mvPath||'front';   // me peaks mid-move, sd2 is the side being attacked
+      crouch+=0.14*me;o.bob-=0.03*me;
+      if(pth==='front'){o.ty+=-sd2*0.55*Math.sin(mu*PI*2);o.pz+=-sd2*0.2*me;o.tx+=0.12*me;                       // sell one way, snap the shoulders back the other
+        if(sd2>0){o.lLz=0.42*me+0.18;o.kR+=0.5*me;}else{o.lRz=-0.42*me-0.18;o.kL+=0.5*me;}hxAdd+=0.12*me;}
+      else if(pth==='behind'){o.tx+=0.22*me;o.ty+=sd2*0.45*me;o.pz+=sd2*0.16*me;o.px=(o.px||0)+0.1*me;                   // lean over it and wrap it round the hips
+        if(drib<0){o.sLx=-0.2;o.sLz=0.9*me+0.3;o.eL=-0.9;}else{o.sRx=-0.2;o.sRz=-0.9*me-0.3;o.eR=-0.9;}}
+      else if(pth==='spin'){o.tx+=0.18;crouch+=0.08;o.sLz=0.75;o.sRz=-0.75;o.eL=o.eR=-1.2;o.lLz=0.3;o.lRz=-0.3;o.pz+=sd2*0.22*me;}   // tuck in tight and whip round
+      else if(pth==='step'){o.tx+=0.2-0.5*mu;o.px=(o.px||0)-0.12*me;o.lLx-=0.35*me*(sd2>0?1:0.3);o.lRx-=0.35*me*(sd2>0?0.3:1);o.kL+=0.3*me;o.kR+=0.3*me;}   // rock forward, then hop back upright
+      else if(pth==='burst'){o.tx+=0.3*me+0.08;o.sLx*=1.4;o.sRx*=1.4;o.kL*=1.25;o.kR*=1.25;o.px=(o.px||0)+0.1*me;}                  // drop the shoulder and go
+      else{var hz3=Math.sin(mu*PI*3);o.tx+=0.1+0.14*Math.abs(hz3);o.ty+=sd2*0.3*hz3;crouch+=0.1*Math.abs(hz3);o.bob+=0.03*hz3;hxAdd-=0.15*Math.abs(hz3);}   // stutter: quick rises and dips, eyes up
+      var offA=0.5*me;if(drib<0){o.sLz+=offA;o.eL-=0.2*me;}else if(drib>0){o.sRz-=offA;o.eR-=0.2*me;}                 // the free arm swings out for balance
+    }
     var nd=9;opps(p.team).forEach(function(q2){var d3=pd(p,q2);if(d3<nd)nd=d3;});
     if(nd<1.7&&drib){var shl=1-nd/1.7;crouch+=0.1*shl;o.tx+=0.1*shl;                 // defender close: get low and put the off arm between them and the ball
       if(drib<0){o.sLx=o.sLx*(1-shl)-0.95*shl;o.eL=o.eL*(1-shl)-1.3*shl;o.sLz=o.sLz*(1-shl)+0.8*shl;}
@@ -2310,6 +2337,8 @@ function animate(p,dt){
   L(j.hips,'x',o.px,k);L(j.hips,'y',o.py,k);L(j.hips,'z',o.pz,k*0.6);
   j.hips.position.y+=(hyv-j.hips.position.y)*k;
   L(j.hipL,'x',o.lLx,k);L(j.hipL,'z',o.lLz,k);L(j.hipR,'x',o.lRx,k);L(j.hipR,'z',o.lRz,k);L(j.knL,'x',o.kL,k);L(j.knR,'x',o.kR,k);
+  if(j.anL){var af=tilt?0.2:(p.y>0.05?0.35:0.8),toeL=p.y>0.05?0.5:Math.max(0,-s)*0.45*sf,toeR=p.y>0.05?0.5:Math.max(0,s)*0.45*sf;   // feet stay flat on the floor, push off the toes in a stride, and point in the air
+    L(j.anL,'x',Math.max(-0.9,Math.min(0.9,-(o.lLx+o.kL)*af))+toeL,k);L(j.anR,'x',Math.max(-0.9,Math.min(0.9,-(o.lRx+o.kR)*af))+toeR,k);}
   L(j.shL,'x',o.sLx,k);L(j.shL,'z',o.sLz,k);L(j.shR,'x',o.sRx,k);L(j.shR,'z',o.sRz,k);L(j.elL,'x',o.eL,k);L(j.elR,'x',o.eR,k);
   if(drib){
     var hyT=Math.max(ball.pos.y+0.128,p.y+0.72*p.h)-ball.pos.y+0.012;
@@ -2546,6 +2575,18 @@ function update(dt){
   if(guest){guestSend(localInput(user),dt);guestApply(dt);ballVisual(dt);if(game.state==='over')return;}
   else{
     if(game.inb){if(ball.state==='held'&&ball.holder===game.inb)game.inb.immune=1;else game.inb=null;}
+    if(game.state==='play'&&!game.practice){           // half court rules
+      var hh=ball.state==='held'?ball.holder:null,hs=hh?Math.sign(atkZ(hh.team))*hh.z:0;
+      if(game.safe>=0){game.safeT+=dt;if((hh&&hh.team===game.safe&&!game.inb&&!game.fetch&&hs>0.4)||ball.state==='shot'||game.safeT>14||(hh&&hh.team!==game.safe))game.safe=-1;}   // over half: now they can go for it
+      if(hh&&!game.inb&&!game.fetch){
+        if(game.frontT!==hh.team){game.frontT=hh.team;game.front=false;}
+        if(hs>0.5)game.front=true;
+        else if(game.front&&hs<-0.5){                    // took it back over the line
+          game.front=false;sayAll('BACKCOURT VIOLATION',1-hh.team,1.4,'buzz');var vt=hh.team;
+          players.forEach(function(q){if(q.act==='shoot')q.act='fall';});ball.dead=true;looseBall(0,1,0,9);game.lastScorer=-1;game.state='dead';game.deadT=1.2;game.next=1-vt;
+        }
+      }else if(ball.state==='shot'||ball.state==='loose')game.front=false;   // a loose ball resets it: only carrying or passing it back counts
+    }
     if(game.fetch&&game.state==='play'){
       var F=game.fetch;F.t+=dt;
       if(F.p){
@@ -2607,7 +2648,7 @@ function endGame(){
   $('meter').style.display='none';postStart();
 }
 function newGame(){
-  game.fetch=null;game.sc=0;recReset();var osd=(R()*1000)|0;players.forEach(function(p,i){p.g.visible=p.shadow.visible=true;var bt=botId(i,osd);p.name=p===user?save.prof.name:bt.name;p.icon=p===user?save.prof.icon:bt.icon;});
+  game.fetch=null;game.sc=0;game.safe=-1;game.front=false;game.frontT=-1;recReset();var osd=(R()*1000)|0;players.forEach(function(p,i){p.g.visible=p.shadow.visible=true;var bt=botId(i,osd);p.name=p===user?save.prof.name:bt.name;p.icon=p===user?save.prof.icon:bt.icon;});
   game.map='bg'+((R()*4)|0);themeSet(game.map);
   user.stam=1;user.tired=false;user.stamCd=0;inp.tSprint=false;
   inp.shoot=inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;
@@ -3035,7 +3076,7 @@ function cardHTML(x,id,status,pressed){
 var banSel=0;
 function renderLobby(){
   if(srv.party)srvSend({t:'load',load:myLoadout()});   // keep the lobby's copy of your baller current
-  $('coins').textContent=save.coins+' S tokens';
+  $('coins').textContent=save.coins+' S';
   var cur=BYID[save.eq.char]||CHARS[0];
   var b='<div class="shead"><h2>'+cur.n+'</h2><span class="stars r'+cur.r+'"><span class="stars">'+ST(cur.r)+'</span> '+cur.t+'</span></div>'+bars(cur);
   var secs=[['char','Characters ('+save.chars.length+' of '+CHARS.length+')'],['js','Jump shot'],['dr','Dribble moves'],['dk','Dunk'],['bb','Backbling']],shown=[];
@@ -3057,7 +3098,7 @@ function renderLobby(){
     b+='</div>';
   });
   b+='<p class="note">Pull more characters and moves in the gacha.</p>';
-  var g='<div class="shead"><h2>Gacha</h2><div class="sinfo"><span>You have <b>'+save.coins+' S tokens</b></span></div></div>'+
+  var g='<div class="shead"><h2>Gacha</h2><div class="sinfo"><span>You have <b>'+save.coins+' S</b></span></div></div>'+
     '<p class="note">Characters, moves, MVP emotes, backblings, profile icons and banners, and lobby backgrounds. Rates on every banner: 5 star 4%, 4 star 18%, 3 star 78%. A 10 pull always has a 4 star or better, and pull 50 without a 5 star is one. Repeats pay you back coins.</p>';
   BANNERS.forEach(function(B,bi){
     g+='<div class="banner" style="--b1:'+B.b1+';--b2:'+B.b2+'">'+pic(BYID[B.feat[0]])+'<div class="binfo"><h3>'+B.n+'</h3><p>'+B.d+'</p><div class="feat">Featured: ';
