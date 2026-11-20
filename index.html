@@ -186,6 +186,7 @@ body.layedit .btn{display:flex;touch-action:none}
 .slots .chip{flex:1 1 30%;font-size:13px;line-height:1.15;padding:5px 4px}
 .slots .chip b{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.7}
 #bSprint{background:var(--paper);color:var(--ink)}
+#bGuard{background:#22a6a1;color:var(--ink)}
 #stam{position:absolute;left:50%;bottom:14px;width:170px;height:14px;transform:translateX(-50%);background:var(--ink);border:3px solid var(--ink);border-radius:8px;overflow:hidden;box-shadow:3px 3px 0 rgba(0,0,0,.4)}
 #stam b{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--good)}
 #stam.tired b{background:var(--hot)}
@@ -270,6 +271,7 @@ body.pauseset #settings{padding-top:0}
   <div id="keys"><kbd>WASD</kbd> move &nbsp; <kbd>Space</kbd> <span id="kS">shoot</span> &nbsp; <kbd>F</kbd> <span id="kP">pass</span> &nbsp; <kbd>Shift</kbd> <span id="kM">move</span></div>
   <div id="stickzone"><div id="sbase"></div><div id="sknob"></div></div>
   <div class="btn" id="bSprint">SPRINT</div>
+  <div class="btn" id="bGuard">GUARD</div>
   <div class="btn off" id="bDunk">DUNK</div>
   <div class="btn" id="bMove"><div id="bMoveK">MOVE</div></div>
   <div class="btn" id="bPass">PASS</div>
@@ -990,7 +992,7 @@ function getPad(){ // the controller in use: the last one touched, skipping devi
 }
 var padIdx=-1;
 function pollPad(){
-  var g=getPad();inp.px=inp.py=0;if(!g){inp.padSprint=false;inp.padDunk=false;return false;}
+  var g=getPad();inp.px=inp.py=0;if(!g){inp.padSprint=false;inp.padDunk=false;inp.padGuard=false;return false;}
   var b=g.buttons,i,start=false;function dn(n){return !!(b[n]&&b[n].pressed);}
   var ax=g.axes[0]||0,ay=g.axes[1]||0;if(Math.hypot(ax,ay)<0.22){ax=0;ay=0;}
   if(dn(14))ax=-1;if(dn(15))ax=1;if(dn(12))ay=-1;if(dn(13))ay=1;
@@ -1007,7 +1009,7 @@ function pollPad(){
     if(c.dunk&&!padPrev.dunk)inp.dunkP=true;
     if(dn(9)&&!padPrev.b9){start=true;inp.pauseP=true;}
   }
-  padPrev.shoot=c.shoot;padPrev.pass=c.pass;padPrev.move=c.move;padPrev.dunk=c.dunk;inp.padSprint=dn(P.sprint);inp.padDunk=dn(P.dunk);for(i=0;i<b.length;i++)padPrev['b'+i]=dn(i);
+  padPrev.shoot=c.shoot;padPrev.pass=c.pass;padPrev.move=c.move;padPrev.dunk=c.dunk;inp.padSprint=dn(P.sprint);inp.padDunk=dn(P.dunk);inp.padGuard=dn(P.guard);for(i=0;i<b.length;i++)padPrev['b'+i]=dn(i);
   return start;
 }
 (function(){
@@ -1049,6 +1051,7 @@ function pollPad(){
   })();
   btn($('bDunk'),function(){inp.dunkP=true;inp.tDunk=true;},function(){inp.tDunk=false;});
   btn($('bSprint'),function(){inp.tSprint=true;},function(){inp.tSprint=false;});
+  btn($('bGuard'),function(){inp.tGuard=true;},function(){inp.tGuard=false;});
   document.addEventListener('contextmenu',function(e){e.preventDefault();});
 })();
 function readStick(){
@@ -1080,6 +1083,7 @@ function releaseShot(p){
   opps(p.team).forEach(function(o){
     var dd=pd(o,p),front=((o.x-p.x)*ux+(o.z-p.z)*uz)>0;
     if(dd<1.5&&front&&o.y>0.25){c=Math.min(c,.45);if(R()<(o.human?.55:.35)*J.blk)blocker=o;}
+    else if(o.guard&&dd<1.9)c=Math.min(c,.58);
     else if(dd<1.3)c=Math.min(c,.66);else if(dd<2.2)c=Math.min(c,.88);
   });
   c=c+(1-c)*J.con;
@@ -1109,7 +1113,7 @@ function dribMove(p,type,dx,dz,DRo,slow){
   var hz=atkZ(p.team),d=hoopDist(p)||1,ux=-p.x/d,uz=(hz-p.z)/d,got=false;
   opps(p.team).forEach(function(o){
     if(o.stun>0||o.act||pd(o,p)>1.8||((o.x-p.x)*ux+(o.z-p.z)*uz)<0)return;
-    if(R()<DR.shake*(o.human?0.45:1)){o.stun=0.5;got=true;}
+    if(R()<DR.shake*(o.human?0.45:1)*(o.guard?0.35:1)){o.act='down';o.actT=0;o.stun=0;o.guard=false;o.vx=dx*2.6;o.vz=dz*2.6;o.wx=o.wz=0;got=true;}   // feet go, body follows
   });
   if(got)sayTo(p,DR.path==='step'?'SPACE!':'ANKLES!','var(--good)',0.7);
   sfx.bounce(0.3);
@@ -1130,9 +1134,9 @@ function slam(p){
 }
 function doPass(p,m){
   if(!m)return;
-  var d=pd(p,m),t=d/13,tx=m.x+m.vx*t,tz=m.z+m.vz*t;
-  tx=Math.max(-WALLX+.5,Math.min(WALLX-.5,tx));tz=Math.max(-WALLZ+.5,Math.min(WALLZ-.5,tz));
-  ball.p0.copy(ball.pos);ball.p1.set(tx,1.25,tz);ball.T=Math.max(0.15,Math.hypot(tx-ball.pos.x,tz-ball.pos.z)/13);ball.t=0;
+  if(ball.pos.y<2.4)localToWorld(p,0,1.22*p.h,0.32,ball.pos);            // thrown from the chest, not from wherever the dribble was
+  var d=Math.max(0.5,Math.hypot(m.x-ball.pos.x,m.z-ball.pos.z));
+  ball.p0.copy(ball.pos);ball.p1.set(m.x,1.2*m.h,m.z);ball.d0=d;ball.y0=ball.pos.y;ball.pspd=13.5+Math.min(5,d*0.35);ball.lob=Math.min(0.9,0.05+d*0.03);ball.T=d/ball.pspd;ball.t=0;
   ball.state='pass';ball.holder=null;ball.passFrom=p;ball.passTo=m;ball.tried=[];p.passAnim=0.25;
   if(p.act==='shoot'){p.act='fall';}
   p.faceTo=Math.atan2(m.x-p.x,m.z-p.z);
@@ -1245,7 +1249,7 @@ function aiDefend(p,dt){
 }
 function inbPass(p){var m=null;mates(p).forEach(function(q){if(q.human&&q.callT>0)m=q;});if(!m)m=bestMate(p);if(!m)m=mates(p)[0];doPass(p,m);}
 function aiThink(p,dt){
-  p.faceTo=null;p.hold=false;
+  p.faceTo=null;p.hold=false;p.guard=false;
   if(p.act||p.stun>0){p.wx=p.wz=0;return;}
   if(game.state!=='play'){p.wx=p.wz=0;return;}
   if(game.inb===p){p.wx=p.wz=0;p.inbT+=dt;if(p.inbT>p.inbWait)inbPass(p);return;}
@@ -1275,7 +1279,7 @@ function localInput(p){ // what the person on this device is asking for, in cour
   hudTgt=tgt;
   var I={wx:wx,wz:wz,yaw:camYaw,shoot:!!inp.shoot,shootP:!!inp.shootP,shootR:!!inp.shootR,passP:!!inp.passP,tgt:tgt,moveP:!!inp.moveP,flick:!!inp.dribSlot,
     slot:inp.dribSlot||((Math.abs(inp.ix)>0.45&&Math.abs(inp.ix)>=Math.abs(inp.iy)*0.8)?(inp.ix>0?'r':'l'):inp.iy<-0.45?'b':inp.iy>0.45?'f':'n'),
-    dunkP:!!inp.dunkP,dunk:!!(inp.keys[save.set.keys.dunk]||inp.tDunk||inp.padDunk),sprint:!!(inp.keys[save.set.keys.sprint]||inp.tSprint||inp.padSprint)};
+    dunkP:!!inp.dunkP,dunk:!!(inp.keys[save.set.keys.dunk]||inp.tDunk||inp.padDunk),guard:!!(inp.keys[save.set.keys.guard]||inp.tGuard||inp.padGuard),sprint:!!(inp.keys[save.set.keys.sprint]||inp.tSprint||inp.padSprint)};
   inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=false;inp.dribSlot=null;
   return I;
 }
@@ -1288,7 +1292,7 @@ function localHud(p){ // buttons, shot meter and pass marker for the person on t
   var m=p.act==='shoot'&&!p.released&&p.jK&&game.state==='play';$('meter').style.display=m?'block':'none';if(m)$('mfill').style.width=Math.min(100,p.actT/p.jK.dur*100)+'%';
 }
 function humanThink(p,I,dt){ // one real player's input, whether it came from this device or over the network
-  p.faceTo=null;p.callT-=dt;p.stealCd-=dt;p.hold=!!I.dunk;
+  p.faceTo=null;p.callT-=dt;p.stealCd-=dt;p.hold=!!I.dunk;p.guard=false;
   var hasBall=ball.state==='held'&&ball.holder===p,onO=game.poss===p.team;
   var canD=hasBall&&!p.act&&game.state==='play'&&hoopDist(p)<dunkRange(p);
   var wx=+I.wx||0,wz=+I.wz||0,wl=Math.hypot(wx,wz);if(wl>1){wx/=wl;wz/=wl;}
@@ -1309,10 +1313,14 @@ function humanThink(p,I,dt){ // one real player's input, whether it came from th
     else if((p.relQ&&p.actT>=0.12)||p.actT>=p.jK.dur)releaseShot(p);
   }
   if(p.act||p.stun>0){p.wx=p.wz=0;return;}
-  var sp=p.spd*(hasBall?0.9:1)*(p.sprinting?1.32:1)*(p.tired?0.62:1);p.wx=wx*sp;p.wz=wz*sp;
+  p.guard=!!I.guard&&!hasBall;                           // guard stance: low and wide, slower feet, harder to shake, shoot over or pass around
+  if(p.guard){p.sprinting=false;p.faceTo=Math.atan2(ball.pos.x-p.x,ball.pos.z-p.z);}
+  var sp=p.spd*(hasBall?0.9:1)*(p.sprinting?1.32:1)*(p.tired?0.62:1)*(p.guard?0.7:1);p.wx=wx*sp;p.wz=wz*sp;
   if(I.shootP){if(hasBall)startShot(p);else jump(p);}
   else if(I.dunkP&&canD)startDunk(p);
   if(I.moveP&&p.moveCd<=0&&!p.act){
+    var mc=hasBall?0.14:0.09;if(p.tired||p.stam<mc){sayTo(p,'TOO TIRED','',0.5);return;}
+    p.stam-=mc;p.stamCd=0.9;if(p.stam<0.01){p.stam=0;p.tired=true;}   // every move costs some wind
     var slot=I.slot,ds=!!I.flick;
     if(hasBall){
       var DRu=(p.load&&p.load.drs[slot])||BYID.dr0,sd=slot==='r'?1:-1;
@@ -1338,9 +1346,9 @@ function humanThink(p,I,dt){ // one real player's input, whether it came from th
    No game server. Players connect straight to each other (WebRTC through the PeerJS public broker).
    One player hosts and runs the match; the others send their inputs and draw what the host reports. */
 var SERVER='wss://static-yod8.onrender.com'; // the match server's address. Empty = players connect straight to each other.
-var MMROOMS=6,MMPRE='static3v3-mm1-',ZEROI={wx:0,wz:0,yaw:0,shoot:false,shootP:false,shootR:false,passP:false,tgt:-1,moveP:false,slot:'n',flick:false,dunkP:false,dunk:false,sprint:false};
+var MMROOMS=6,MMPRE='static3v3-mm1-',ZEROI={wx:0,wz:0,yaw:0,shoot:false,shootP:false,shootR:false,passP:false,tgt:-1,moveP:false,slot:'n',flick:false,dunkP:false,dunk:false,guard:false,sprint:false};
 var net={on:false,role:null,peer:null,hostPeer:null,conn:null,guests:[],searching:false,k:0,cd:-1,started:false,trying:null,tmo:0,snap:null,sendT:0,outT:0,out:null,tick:0};
-var ACTS=[null,'shoot','jump','dunk','fall','drib','hang','emote'],BST=['held','shot','pass','loose','tip'],teamRings=[];
+var ACTS=[null,'shoot','jump','dunk','fall','drib','hang','emote','down'],BST=['held','shot','pass','loose','tip'],teamRings=[];
 function r2(v){return Math.round(v*100)/100;}
 function mmStatus(t){$('mmS').textContent=t;}
 function myLoadout(){return {c:save.eq.char,js:save.eq.js,dk:save.eq.dk,drs:save.eq.drs,em:save.eq.em||'em0'};}
@@ -1510,7 +1518,7 @@ function friendsRender(){
   save.friends.forEach(function(q,i){var st=srv.stat[q.code],on=!!(st&&st.on);
     h+='<div class="frow"><span class="fic">'+icoHTML(q.icon)+'</span><span class="fnm">'+esc(q.name)+'<small'+(on?' class="on"':'')+'>'+(on?(st.busy?'In a game':'Online'):'Offline')+'</small></span>'+
       (on&&!st.busy?'<button class="chip" id="fInv'+i+'">Invite</button>':'')+'<button class="chip" id="fRm'+i+'" aria-label="Remove '+esc(q.name)+'">\u2715</button></div>';});
-  if(!h)h='<p class="note">No friends yet. Swap codes to add each other.</p>';
+  if(!h)h='<p class="note">No friends yet. Search a name above to add someone.</p>';
   $('fList').innerHTML=h;
   save.friends.forEach(function(q,i){
     if($('fInv'+i))$('fInv'+i).addEventListener('click',function(){if(net.on)return;srvSend({t:'invite',to:q.code,load:myLoadout()});toast('Invite sent to '+q.name);});
@@ -1650,7 +1658,7 @@ function netDropped(msg){
 function mkSnap(){
   return {t:'s',g:[game.state,game.score[0],game.score[1],r2(game.clock),game.poss,game.lastScorer,game.inb?players.indexOf(game.inb):-1],
     b:[BST.indexOf(ball.state),r2(ball.pos.x),r2(ball.pos.y),r2(ball.pos.z),ball.holder?players.indexOf(ball.holder):-1,r2(ball.vel.x),r2(ball.vel.y),r2(ball.vel.z),ball.dead?1:0],
-    p:players.map(function(p){return [r2(p.x),r2(p.z),r2(p.y),r2(p.face),r2(p.vx),r2(p.vz),ACTS.indexOf(p.act),r2(p.actT),(p.released?1:0)|(p.hand>0?2:0)|(p.tired?4:0)|(p.human?8:0),
+    p:players.map(function(p){return [r2(p.x),r2(p.z),r2(p.y),r2(p.face),r2(p.vx),r2(p.vz),ACTS.indexOf(p.act),r2(p.actT),(p.released?1:0)|(p.hand>0?2:0)|(p.tired?4:0)|(p.human?8:0)|(p.guard?16:0),
       r2(Math.max(0,p.stun)),r2(Math.max(0,p.passAnim)),r2(p.dp%(PI*2)),p.jK?MOVES.indexOf(p.jK):-1,p.dkK?MOVES.indexOf(p.dkK):-1,p.mvType||'',p.mvPath||'',r2(p.mvT),r2(p.stam),r2(Math.max(0,p.callT))];})};
 }
 function hostTick(dt){ // tell the guests where everything is, 20 times a second
@@ -1685,7 +1693,7 @@ function applySnap(S,dt,el,rp){ // draw the court as one snapshot says it is (li
     if(Math.hypot(tx-p.x,tz-p.z)>4){p.x=tx;p.z=tz;}else{p.x+=(tx-p.x)*k;p.z+=(tz-p.z)*k;}
     p.y+=(a[2]-p.y)*Math.min(1,dt*25);if(a[2]===0&&p.y<0.03)p.y=0;
     p.face=angLerp(p.face,a[3],Math.min(1,dt*18));p.vx=a[4];p.vz=a[5];
-    p.act=ACTS[a[6]]||null;p.actT=a[7]+el;p.released=!!(a[8]&1);p.hand=(a[8]&2)?1:-1;p.tired=!!(a[8]&4);p.human=!!(a[8]&8);
+    p.act=ACTS[a[6]]||null;p.actT=a[7]+el;p.released=!!(a[8]&1);p.hand=(a[8]&2)?1:-1;p.tired=!!(a[8]&4);p.human=!!(a[8]&8);p.guard=!!(a[8]&16);
     p.stun=a[9];p.passAnim=a[10];p.dp=a[11];p.jK=a[12]>=0?MOVES[a[12]]:null;p.dkK=a[13]>=0?MOVES[a[13]]:null;p.mvType=a[14];p.mvPath=a[15];p.mvT=a[16]||0.3;p.stam=a[17];p.callT=a[18];
   }
   var b=S.b,bx=b[1],by=b[2],bz=b[3];
@@ -1709,6 +1717,8 @@ function movePlayer(p,dt){
   if(p.act==='drib'){
     var e2=1-0.5*Math.min(1,p.actT/p.mvT);p.vx=p.mvx*e2;p.vz=p.mvz*e2;p.x+=p.vx*dt;p.z+=p.vz*dt;
     if(p.actT>=p.mvT){p.act=null;p.vx*=0.6;p.vz*=0.6;}
+  }else if(p.act==='down'){                               // on the floor: slide to a stop, then get back up
+    var fr=Math.max(0,1-dt*3.2);p.vx*=fr;p.vz*=fr;p.x+=p.vx*dt;p.z+=p.vz*dt;p.y=0;p.vy=0;if(p.actT>=1.6)p.act=null;
   }else if(p.act==='dunk'){
     var DK=p.dkK||DK0,D=DK.dur,k=Math.min(1,p.actT/D),e=k*k*(3-2*k);
     p.x=p.d0x+(p.d1x-p.d0x)*e;p.z=p.d0z+(p.d1z-p.d0z)*e;p.y=Math.max(DK.peak,RIMY-1.99*p.h)*Math.sin(k*PI/2);p.vx=p.vz=0;
@@ -1736,7 +1746,8 @@ function movePlayer(p,dt){
     else if(hasBall)tf=Math.atan2(-p.x,atkZ(p.team)-p.z);
     else if(game.state==='play')tf=Math.atan2(ball.pos.x-p.x,ball.pos.z-p.z);
   }
-  if(p.act==='hang')p.face=p.dFace;
+  if(p.act==='down'){}
+  else if(p.act==='hang')p.face=p.dFace;
   else if(p.act==='dunk')p.face=p.dFace+(p.dkK&&p.dkK.spin?PI*2*Math.min(1,p.actT/p.dkK.dur):0);
   else if(p.act==='drib'&&p.mvPath==='spin')p.face=p.mvFace+PI*2*Math.min(1,p.actT/p.mvT)*(p.hand<0?1:-1);
   else if(tf!==null)p.face=angLerp(p.face,tf,Math.min(1,dt*11));
@@ -1787,17 +1798,21 @@ function updateBall(dt){
       if(b.made){b.pos.set(b.p1.x,RIMY,b.p1.z);scored(b.shooter.team);}
       else{kickNet(b.p1.z>0?0:1,0.04);var sg=Math.sign(b.p1.z),a=R()*PI*2,v=1.2+R()*2.4;looseBall(Math.cos(a)*v,2.4+R()*2.4,-sg*Math.abs(Math.sin(a)*v)-sg*0.8,0.3);sndAll('rim');}
     }
-  }else if(b.state==='pass'){
-    b.t+=dt;s=Math.min(1,b.t/b.T);
-    b.pos.x=b.p0.x+(b.p1.x-b.p0.x)*s;b.pos.z=b.p0.z+(b.p1.z-b.p0.z)*s;
-    b.pos.y=b.p0.y+(b.p1.y-b.p0.y)*s+0.3*4*s*(1-s);
-    var os=opps(b.passFrom.team);
-    for(i=0;i<os.length;i++){var o=os[i];
-      if(s>0.15&&s<0.95&&b.tried.indexOf(o)<0&&o.stun<=0&&hd(o.x,o.z,b.pos.x,b.pos.z)<0.8){b.tried.push(o);
-        if(R()<(o.human?0.85:0.3)){giveBall(o);sayAll('PICKED OFF!',o.team,0.9,'steal');return;}}}
-    if(s>=1){var m=b.passTo;
-      if(hd(m.x,m.z,b.p1.x,b.p1.z)<2.2&&m.stun<=0)giveBall(m);
-      else{var dx=b.p1.x-b.p0.x,dz=b.p1.z-b.p0.z,l=Math.hypot(dx,dz)||1;looseBall(dx/l*7,0.5,dz/l*7,0.05);}}
+  }else if(b.state==='pass'){                              // the ball flies straight at the receiver and follows them if they keep moving
+    var pm=b.passTo,pty=pm.y+1.2*pm.h,ptx=pm.x+pm.vx*0.06,ptz=pm.z+pm.vz*0.06,pdx=ptx-b.pos.x,pdz=ptz-b.pos.z,pdl=Math.hypot(pdx,pdz)||0.001,pst=b.pspd*dt;
+    b.t+=dt;b.p1.set(ptx,pty,ptz);
+    if(pdl<=pst+0.3){
+      if(pm.stun<=0&&pm.act!=='down'){b.pos.set(ptx,pty,ptz);giveBall(pm);}
+      else looseBall(pdx/pdl*4,1.5,pdz/pdl*4,0.1);
+    }else if(b.t>b.T+1.5)looseBall(pdx/pdl*5,0.5,pdz/pdl*5,0.05);
+    else{
+      var ps=Math.max(0,Math.min(1,1-(pdl-pst)/b.d0));
+      b.pos.x+=pdx/pdl*pst;b.pos.z+=pdz/pdl*pst;b.pos.y=b.y0+(pty-b.y0)*ps+b.lob*4*ps*(1-ps);b.vel.set(pdx/pdl*b.pspd,0,pdz/pdl*b.pspd);
+      var os=opps(b.passFrom.team);
+      for(i=0;i<os.length;i++){var o=os[i];
+        if(ps>0.15&&ps<0.92&&b.tried.indexOf(o)<0&&o.stun<=0&&o.act!=='down'&&b.pos.y<o.y+2.3*o.h&&hd(o.x,o.z,b.pos.x,b.pos.z)<(o.guard?1.2:0.8)){b.tried.push(o);
+          if(R()<(o.human?0.85:0.3)){giveBall(o);sayAll('PICKED OFF!',o.team,0.9,'steal');break;}}}
+    }
   }else if(b.state==='tip'){ // the jump ball places it
   }else{ // loose
     b.vel.y-=9.8*dt;b.pos.addScaledVector(b.vel,dt);
@@ -1807,7 +1822,7 @@ function updateBall(dt){
     if(Math.abs(b.pos.z)>WALLZ){b.pos.z=Math.sign(b.pos.z)*WALLZ;b.vel.z*=-0.6;}
     if(!b.dead&&b.noPick<=0&&game.state==='play'){
       var best=null,bd=0.85;
-      for(i=0;i<players.length;i++){p=players[i];if(p.stun>0||p.act==='dunk'||p.act==='fall')continue;
+      for(i=0;i<players.length;i++){p=players[i];if(p.stun>0||p.act==='dunk'||p.act==='fall'||p.act==='down')continue;
         var d=hd(p.x,p.z,b.pos.x,b.pos.z);
         if(d<bd&&b.pos.y<2.3*p.h+p.y+0.1&&b.pos.y>p.y-0.3){bd=d;best=p;}}
       if(best){giveBall(best);if(best.human&&b.pos.y>1.6)sayTo(best,'BOARD!','var(--good)',0.6);}
@@ -1892,7 +1907,7 @@ function animate(p,dt){
   var held=ball.state==='held',hasBall=held&&ball.holder===p,live=game.state==='play'||replaying,inPlay=held||ball.state==='pass';
   var onD=live&&game.poss!==p.team&&inPlay,onO=live&&game.poss===p.team&&!hasBall&&inPlay;
   var idle=1-Math.min(1,sp/1.2),bk=vf<-0.4,dir=bk?-0.55:1,kb=bk?0.6:1;
-  var crouch=0.05+0.05*idle,ikL=null,ikR=null,flick=0,drib=0,hxAdd=0,hang=0,k=Math.min(1,dt*16);
+  var crouch=0.05+0.05*idle,ikL=null,ikR=null,flick=0,drib=0,hxAdd=0,hang=0,tilt=0,roll=0,k=Math.min(1,dt*16);
   // running, backpedalling and standing: hips and shoulders counter-rotate, the body leans into speed changes and turns, and it breathes at rest
   var o={tx:0.2*sf*(bk?-0.4:1)+Math.sin(t*1.7)*0.018*idle,ty:s*0.26*sf,tz:s*0.03*sf,
     sLx:s*0.8*sf*dir,sRx:-s*0.8*sf*dir,sLz:0.12+0.03*idle+Math.sin(t*1.7)*0.012*idle,sRz:-0.12-0.03*idle-Math.sin(t*1.7)*0.012*idle,
@@ -1925,6 +1940,18 @@ function animate(p,dt){
     if(hasBall){ikR=[0.02,-0.04,-0.11];if(da==='two'){ikL=[0.115,-0.02,-0.03];ikR=[-0.115,-0.02,-0.03];}}
     if(da==='meteor'){o.sLx=-0.4;o.sLz=1.2;o.lLx=-1.3;o.lRx=-1.0;o.kL=1.6;o.kR=1.5;o.tx=-0.25+0.5*dk;}
     k=Math.min(1,dt*22);
+  }else if(p.act==='down'){
+    var ft=p.actT,sd=(p.idx+p.team)%2?1:-1,fu=Math.max(0,Math.min(1,(ft-0.14)/0.36)),gu=Math.max(0,Math.min(1,(ft-1.05)/0.5)),jig=ft>0.5?Math.sin((ft-0.5)*20)*Math.exp(-(ft-0.5)*6):0;
+    gu=gu*gu*(3-2*gu);
+    tilt=ft<0.14?-0.25*(ft/0.14):ft<0.5?-0.25-1.25*fu*fu:ft<0.72?-1.5+0.2*Math.sin((ft-0.5)/0.22*PI):-1.5*(1-gu);       // tip back, hit the floor, bounce once, lie there, get up
+    roll=sd*0.3*Math.sin(fu*PI/2)*(1-gu);
+    var dn=fu*(1-gu),up=1-dn;                                                                                           // dn: how far into lying flat
+    crouch=0.55*up*(ft<0.5?Math.min(1,ft/0.14):1)*(gu>0?1:1)+0.5*gu*(1-gu)*2;
+    o.tx=-0.2*dn+0.3*gu*(1-gu)*2;o.ty=sd*0.25*dn;o.tz=0;o.px=o.py=o.pz=0;o.bob=0;
+    o.sLx=-2.3*(1-fu)*Math.min(1,ft/0.1)-0.3*dn+0.3*jig;o.sRx=-1.9*(1-fu)*Math.min(1,ft/0.1)-0.5*dn-0.3*jig;       // arms fly up, then drop loose to the sides
+    o.sLz=0.3+1.05*dn;o.sRz=-0.3-1.2*dn;o.eL=-0.4-0.5*dn+0.2*jig;o.eR=-0.3-0.3*dn;
+    o.lLx=-0.55*dn*(sd>0?1:0.25)-0.5*jig*dn;o.lRx=-0.55*dn*(sd>0?0.25:1)+0.2*jig*dn;o.kL=0.9*dn*(sd>0?1:0.2)+0.4*up;o.kR=0.9*dn*(sd>0?0.2:1)+0.4*up;   // one knee up, one leg out
+    o.lLz=0.1+0.2*dn;o.lRz=-0.1-0.2*dn;hxAdd=-0.3*dn;k=Math.min(1,dt*20);
   }else if(p.act==='hang'){
     var sw=Math.sin(t*4.5)*0.2*Math.max(0.3,1-p.actT*0.2);     // swing a little under the rim
     crouch=0;o.tx=0.1+sw*0.4;o.ty=0;o.px=sw;o.py=o.pz=0;o.bob=0;o.lLx=0.15+sw;o.lRx=0.02+sw;o.kL=0.55;o.kR=0.3;o.lLz=0.05;o.lRz=-0.05;
@@ -1965,6 +1992,9 @@ function animate(p,dt){
       else{o.sLx=o.sRx=-1.1;o.eL=o.eR=-1.9-w1*0.2;o.sLz=0.7;o.sRz=-0.7;o.tx=-0.12;}                  // flex
       o.bob=Math.abs(Math.sin(t*5))*0.07;crouch=0.1;
     }else{o.tx=0.28;o.sLx=o.sRx=0.25;o.eL=o.eR=-1.35;o.sLz=0.55;o.sRz=-0.55;hxAdd=0.35;}             // hands on hips, head down
+  }else if(p.guard){
+    var gw=Math.sin(t*5)*0.06;crouch=0.42;o.tx=0.24;o.ty*=0.3;                      // sit low, arms out wide
+    o.sLx=o.sRx=-0.35;o.sLz=1.25+gw;o.sRz=-1.25-gw;o.eL=o.eR=-0.3;o.lLz=0.3;o.lRz=-0.3;o.lLx*=0.4;o.lRx*=0.4;o.kL*=0.5;o.kR*=0.5;
   }else if(onD){
     var q=1-sf*0.6,sl=Math.min(1,Math.abs(vl)/(Math.abs(vf)+Math.abs(vl)+0.3))*q,wv=Math.sin(t*6),upL=(lx*fc-lz*fs)>0;
     crouch=0.4*q+0.06;o.tx+=0.2*q;o.ty*=1-q;
@@ -2012,7 +2042,7 @@ function animate(p,dt){
   handPose(p,drib);
   if(flick){j.wrR.rotation.x=0.9*flick;j.wrL.rotation.x=0.35*flick;}
   clothPhys(p,dt);
-  p.g.position.set(p.x,p.y,p.z);p.g.rotation.y=p.face;
+  p.g.rotation.order='YXZ';p.g.rotation.set(tilt,p.face,roll);p.g.position.set(p.x,p.y+0.13*Math.min(1,-tilt/1.5),p.z);
   p.shadow.position.set(p.x,0.025,p.z);var sc=Math.max(0.5,1-p.y*0.35);p.shadow.scale.set(sc,sc,sc);
 }
 
@@ -2042,7 +2072,7 @@ function updateCamera(dt,snap){
 
 /* ---------- main loop ---------- */
 var paused=false,inPauseSet=false;
-function clearInput(){inp.tDunk=false;inp.shoot=inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=inp.pauseP=false;inp.tSprint=false;inp.keys={};inp.sx=inp.sy=0;}
+function clearInput(){inp.tDunk=false;inp.tGuard=false;inp.shoot=inp.shootP=inp.shootR=inp.passP=inp.moveP=inp.dunkP=inp.pauseP=false;inp.tSprint=false;inp.keys={};inp.sx=inp.sy=0;}
 function setPause(on){
   if(on&&game.state!=='play'&&game.state!=='dead')return;
   if(net.on){$('pause').style.display=on?'flex':'none';clearInput();return;}   // an online match cannot be frozen
@@ -2399,8 +2429,8 @@ if(save.moves.indexOf('ic'+save.prof.icon)<0)save.prof.icon=0;
 function mv(k){return BYID[save.eq[k]]||BYID[k+'0'];}
 function dunkRange(p){return p.dunkR+(p.load?p.load.dk.range:0);}
 function owns(x){return (x.kind==='char'?save.chars:save.moves).indexOf(x.id)>=0;}
-var DEFSET={padStyle:'auto',fps:60,q:'high',ctl:isTouch?'mobile':'kbm',keys:{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD',shoot:'Space',pass:'KeyF',move:'ShiftLeft',dunk:'KeyE',sprint:'KeyQ'},
-  pad:{shoot:0,pass:2,move:1,dunk:3,sprint:7},lay:{size:1,hand:'r',pos:{}}};
+var DEFSET={padStyle:'auto',fps:60,q:'high',ctl:isTouch?'mobile':'kbm',keys:{up:'KeyW',down:'KeyS',left:'KeyA',right:'KeyD',shoot:'Space',pass:'KeyF',move:'ShiftLeft',dunk:'KeyE',sprint:'KeyQ',guard:'KeyC'},
+  pad:{shoot:0,pass:2,move:1,dunk:3,sprint:7,guard:6},lay:{size:1,hand:'r',pos:{}}};
 function mergeSet(d){
   var o=JSON.parse(JSON.stringify(DEFSET));
   if(d&&typeof d==='object'){
@@ -2425,7 +2455,7 @@ function keyName(c){
   var m={Space:'Space',ShiftLeft:'L Shift',ShiftRight:'R Shift',ControlLeft:'L Ctrl',ControlRight:'R Ctrl',AltLeft:'L Alt',AltRight:'R Alt',ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right',Enter:'Enter'};
   return m[c]||c;
 }
-var BTN={bShoot:[104,70,78,17],bPass:[82,171,55,14],bMove:[94,160,152,13],bDunk:[72,62,176,13],bSprint:[72,250,46,11]};
+var BTN={bShoot:[104,70,78,17],bPass:[82,171,55,14],bMove:[94,160,152,13],bDunk:[72,62,176,13],bSprint:[72,250,46,11],bGuard:[72,250,128,11]};
 function applyLayout(){
   var Ly=save.set.lay,sc=[0.8,1,1.2][Ly.size]||1;
   for(var id in BTN){
@@ -2456,8 +2486,8 @@ function setLayEdit(on){
   if(on)document.body.classList.add('touch');else{persist();applyControls();renderSettings();}
 }
 function chips(pref,opts,cur){var h='<div class="row">';opts.forEach(function(o){h+='<button class="chip" id="'+pref+o[0]+'" aria-pressed="'+(cur===o[0]?'true':'false')+'">'+o[1]+'</button>';});return h+'</div>';}
-var KEYROWS=[['up','Move up'],['down','Move down'],['left','Move left'],['right','Move right'],['shoot','Shoot / jump'],['pass','Pass / steal / call'],['move','Dribble move / dash'],['dunk','Dunk (in range)'],['sprint','Sprint (hold)']];
-var PADROWS=[['shoot','Shoot / jump'],['pass','Pass / steal / call'],['move','Dribble move / dash'],['dunk','Dunk (in range)'],['sprint','Sprint (hold)']];
+var KEYROWS=[['up','Move up'],['down','Move down'],['left','Move left'],['right','Move right'],['shoot','Shoot / jump'],['pass','Pass / steal / call'],['move','Dribble move / dash'],['dunk','Dunk (in range)'],['sprint','Sprint (hold)'],['guard','Guard stance (hold)']];
+var PADROWS=[['shoot','Shoot / jump'],['pass','Pass / steal / call'],['move','Dribble move / dash'],['dunk','Dunk (in range)'],['sprint','Sprint (hold)'],['guard','Guard stance (hold)']];
 var FPSO=[[30,'30'],[60,'60'],[120,'120']],QO=[['low','Low'],['medium','Medium'],['high','High']],CO=[['kbm','KB&amp;M'],['mobile','Mobile'],['pad','Controller']],
   PSO=[['auto','Auto'],['xbox','Xbox'],['ps','PlayStation']],SZO=[[0,'Small'],[1,'Medium'],[2,'Large']],HO=[['r','Right side'],['l','Left side']];
 function renderSettings(){
@@ -2760,7 +2790,7 @@ function applySettings(){
   $('resOk').addEventListener('click',function(){$('pullRes').style.display='none';});
   $('layDone').addEventListener('click',function(){setLayEdit(false);});
   $('layReset').addEventListener('click',function(){save.set.lay.pos={};applyLayout();});
-  ['bShoot','bPass','bMove','bDunk','bSprint'].forEach(function(id){
+  ['bShoot','bPass','bMove','bDunk','bSprint','bGuard'].forEach(function(id){
     var el=$(id);
     function drag(e){
       if(!layEdit||(e.type==='pointermove'&&!el.classList.contains('dn')))return;
