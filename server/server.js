@@ -150,6 +150,44 @@ function gymMsg(m, d) {
   }
   return false;
 }
+/* the conference: up to four players. Each does their own press conference, then everyone shoots the 3 point contest together */
+const confs = new Set();
+function cpub(m) { return { id: m.cid, name: m.name, icon: m.icon, bn: m.bn, load: m.load }; }
+function confTell(r) { r.members.forEach(m => m.c.send({ t: 'clob', n: r.members.length, cd: r.cd })); }
+function confGo(r) { if (r.go) return; r.go = true; clearTimeout(r.timer); r.timer = null; r.members.forEach(m => m.c.send({ t: 'cgo' })); }
+function confStart(r) {
+  if (r.started) return; r.started = true; clearInterval(r.timer);
+  const seed = Math.floor(Math.random() * 1000000), list = r.members.map(cpub);
+  r.members.forEach(m => m.c.send({ t: 'cstart', list, you: m.cid, seed }));
+  r.timer = setTimeout(() => confGo(r), 150000);          // nobody can hold the room up for ever
+}
+function confLeave(m) {
+  const r = m.conf; if (!r) return; m.conf = null;
+  const i = r.members.indexOf(m); if (i >= 0) r.members.splice(i, 1);
+  if (!r.members.length) { clearInterval(r.timer); clearTimeout(r.timer); confs.delete(r); return; }
+  if (!r.started) { confTell(r); return; }
+  r.members.forEach(x => x.c.send({ t: 'cdel', id: m.cid }));
+  if (!r.go && r.members.every(x => x.cdone)) confGo(r);
+}
+function confMsg(m, d) {
+  if (d.t === 'conf') {
+    if (m.room || m.gym || m.conf) return true;
+    m.load = cleanLoad(d.load);
+    let r = null; for (const q of confs) if (!q.started && q.members.length < 4) { r = q; break; }
+    if (!r) { r = { members: [], started: false, go: false, cd: WAIT, seq: 0, timer: null }; confs.add(r); const rr = r; r.timer = setInterval(() => { rr.cd -= 1; if (rr.cd <= 0) confStart(rr); else confTell(rr); }, 1000); }
+    m.cid = ++r.seq; m.cdone = false; m.conf = r; r.members.push(m);
+    if (r.members.length >= 4) confStart(r); else confTell(r);
+    return true;
+  }
+  if (d.t === 'cleave') { confLeave(m); return true; }
+  if (d.t === 'cdone' || d.t === 'csc') {
+    const r = m.conf; if (!r || !r.started) return true;
+    if (d.t === 'cdone') { if (!m.cdone) { m.cdone = true; r.members.forEach(x => x.c.send({ t: 'cdone', id: m.cid })); if (r.members.every(x => x.cdone)) confGo(r); } }
+    else if (r.go) { const n = Math.max(0, Math.min(60, d.n | 0)); r.members.forEach(x => { if (x !== m) x.c.send({ t: 'csc', id: m.cid, n }); }); }
+    return true;
+  }
+  return false;
+}
 function cleanLoad(l) {
   const s = v => (typeof v === 'string' ? v.slice(0, 24) : ''), d = (l && l.drs) || {};
   l = l || {};
@@ -158,7 +196,9 @@ function cleanLoad(l) {
 function onMessage(m, d) {
   const r = m.room;
   if (d && typeof d.t === 'string' && d.t[0] === 'g' && gymMsg(m, d)) return;
+  if (d && typeof d.t === 'string' && d.t[0] === 'c' && confMsg(m, d)) return;
   if (d && d.t === 'find' && m.gym) gymLeave(m);
+  if (d && d.t === 'find' && m.conf) confLeave(m);
   if (d.t === 'ping') return;
   if (d.t === 'hello') {                                 // who this is: the private id never leaves the server, friends see only the code
     if (m.code || typeof d.pid !== 'string' || d.pid.length < 16 || d.pid.length > 64) return;
@@ -268,7 +308,7 @@ server.on('upgrade', (req, sock) => {
   sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acc + '\r\n\r\n');
   const m = { uid: ++partySeq, room: null, slot: -1, load: cleanLoad(null), c: null, code: '', name: 'Player', icon: 0, bn: 0, inv: new Map(), party: null, msgT: [], reqT: [], flist: new Set() };
   online++;
-  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); gymLeave(m); partyLeave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
+  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); gymLeave(m); confLeave(m); partyLeave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
   const beat = setInterval(() => { if (!m.c.alive) { m.c.close(); return; } m.c.alive = false; m.c.ping(); }, 30000);
 });
 server.listen(PORT, () => console.log('Static server listening on ' + PORT));
