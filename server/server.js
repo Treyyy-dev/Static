@@ -153,7 +153,7 @@ function gymMsg(m, d) {
 function cleanLoad(l) {
   const s = v => (typeof v === 'string' ? v.slice(0, 24) : ''), d = (l && l.drs) || {};
   l = l || {};
-  return { c: s(l.c), js: s(l.js), dk: s(l.dk), em: s(l.em), bb: s(l.bb), bg: s(l.bg), drs: { f: s(d.f), l: s(d.l), r: s(d.r), b: s(d.b), n: s(d.n) } };
+  return { c: s(l.c), js: s(l.js), dk: s(l.dk), em: s(l.em), bb: s(l.bb), bg: s(l.bg), ly: s(l.ly), lv: Math.max(1, Math.min(500, l.lv | 0)), pk: (Array.isArray(l.pk) ? l.pk : []).slice(0, 2).map(s), drs: { f: s(d.f), l: s(d.l), r: s(d.r), b: s(d.b), n: s(d.n) } };
 }
 function onMessage(m, d) {
   const r = m.room;
