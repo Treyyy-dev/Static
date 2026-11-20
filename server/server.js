@@ -80,17 +80,17 @@ function teamsFor(members) {
   members.forEach(m => { const k = m.party && m.party.members.length > 1 ? 'p' + m.party.id : 's' + m.uid; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(m); });
   const gs = [...groups.values()].sort((a, b) => b.length - a.length), teams = [[], []];
   for (const g of gs) {
-    const first = teams[0].length <= teams[1].length ? 0 : 1, t = teams[first].length + g.length <= 3 ? first : (teams[1 - first].length + g.length <= 3 ? 1 - first : -1);
+    const first = teams[0].length <= teams[1].length ? 0 : 1, t = teams[first].length + g.length <= 5 ? first : (teams[1 - first].length + g.length <= 5 ? 1 - first : -1);
     if (t < 0) return null;
     teams[t].push(...g);
   }
   return teams;
 }
-function fits(r, group) { return !r.started && r.members.length + group.length <= 6 && !!teamsFor(r.members.concat(group)); }
+function fits(r, group) { return !r.started && r.members.length + group.length <= 10 && !!teamsFor(r.members.concat(group)); }
 function join(r, group) {                                // put players into a room that has not started
   group.forEach(m => { m.room = r; r.members.push(m); });
   if (r.members.length >= 1 && r.cd <= 0) { r.cd = WAIT; clearInterval(r.timer); r.timer = setInterval(() => tickLobby(r), 1000); }   // the match starts 30 seconds after the first player arrives; the CPU fills every empty spot
-  if (r.members.length >= 6) start(r); else lobby(r);
+  if (r.members.length >= 10) start(r); else lobby(r);
 }
 function lobby(r) { r.members.forEach((m, i) => m.c.send({ t: 'lobby', n: r.members.length, cd: r.cd, first: i === 0 })); }
 function tickLobby(r) {
@@ -102,8 +102,8 @@ function start(r) {
   if (r.started || r.members.length < 1) return;
   const teams = teamsFor(r.members); if (!teams) return;
   r.started = true; clearInterval(r.timer); r.timer = null;
-  const list = [null, null, null, null, null, null];
-  teams.forEach((tm, ti) => tm.forEach((m, i) => { m.slot = ti * 3 + i; list[m.slot] = { load: m.load, name: m.name, icon: m.icon, bn: m.bn }; }));
+  const list = [null, null, null, null, null, null, null, null, null, null];
+  teams.forEach((tm, ti) => tm.forEach((m, i) => { m.slot = ti * 5 + i; list[m.slot] = { load: m.load, name: m.name, icon: m.icon, bn: m.bn }; }));
   r.host = r.members[0];
   r.members.forEach(m => m.c.send({ t: 'start', list, you: m.slot, win: WIN, host: m === r.host }));
 }
