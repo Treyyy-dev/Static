@@ -104,6 +104,8 @@ body.lobby #hud{display:none}
 .chrow .cht{flex:1;min-width:0;font-weight:700;font-size:15px}.chrow .chbar{height:8px;border-radius:4px;background:#14121c;overflow:hidden;margin-top:5px}.chrow .chbar b{display:block;height:100%;background:var(--good)}
 .chrow .chn{font-size:12px;opacity:.75;font-weight:700}.chrow .chip{flex:0 0 auto;min-width:92px;text-align:center}.chrow.done{opacity:.55}
 .chh{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}.chh b{font-family:var(--display);font-size:18px;color:var(--home)}.chh span{font-size:12px;opacity:.75}
+#pCard{display:flex;align-items:center;gap:12px;padding:10px 16px;min-height:66px;flex:0 0 auto;box-sizing:border-box;margin:8px 0 2px;border-radius:12px;border:3px solid var(--home);background:#2a2738;background-size:cover;font-family:var(--display);font-size:24px;color:#fff;text-shadow:0 2px 0 #000,0 0 8px rgba(0,0,0,.6);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#pCard .ico{width:40px;height:40px;line-height:40px;flex:0 0 auto}
 #chalDot{display:none;width:9px;height:9px;border-radius:50%;background:var(--hot);border:2px solid var(--ink)}#chalDot.on{display:inline-block}
 #gmode{position:absolute;right:16px;bottom:92px;z-index:3;min-width:170px;text-align:center;font-family:var(--display);font-size:15px;padding:7px 14px;background:rgba(20,18,28,.9);color:var(--paper);border:3px solid var(--home)}
 #tabRank{position:absolute;right:16px;bottom:150px;z-index:3;min-width:170px;text-align:center;font-family:var(--display);font-size:15px;padding:7px 14px;background:rgba(20,18,28,.9);color:var(--paper);border:3px solid #ffc531}
@@ -390,6 +392,7 @@ body.pauseset #settings{padding-top:0}
   </div></div>
   <div id="profile" class="page"><div class="sheet" id="profSheet">
     <div class="shead"><h2>Game profile</h2><button class="done" id="profBack">Back</button></div>
+    <div id="pCard"></div>
     <h2>Name</h2>
     <div class="row"><span id="pIcon" aria-hidden="true"></span><input id="pName" maxlength="18" aria-label="Your name" autocomplete="off" spellcheck="false"></div>
     <p class="note">Up to 18 characters. Friends and other players see this name.</p>
@@ -2352,7 +2355,8 @@ function reqsRender(){ // people who asked to be your friend
     $('rqN'+i).addEventListener('click',function(){save.reqs.splice(i,1);persist();friendsRender();});
   });
 }
-function profBtn(){$('openProf').innerHTML=icoHTML(save.prof.icon)+' <span>'+esc(save.prof.name)+'</span>';$('openProf').style.cssText=bnStyle(save.prof.bn);}
+function profCard(){try{var c=$('pCard'),b=BNS[bnOK(save.prof.bn)];c.innerHTML=icoHTML(save.prof.icon)+'<span>'+esc(save.prof.name)+'</span>';c.style.background=bnOK(save.prof.bn)?'linear-gradient(rgba(20,18,28,.25),rgba(20,18,28,.25)),'+b.css:'#2a2738';}catch(e){}}   // your name as other players see it, on your banner
+function profBtn(){profCard();$('openProf').innerHTML=icoHTML(save.prof.icon)+' <span>'+esc(save.prof.name)+'</span>';$('openProf').style.cssText=bnStyle(save.prof.bn);}
 function profRender(){
   $('pIcon').innerHTML=icoHTML(save.prof.icon);if(document.activeElement!==$('pName'))$('pName').value=save.prof.name;profBtn();
   var h='',mine=[];CHARS.forEach(function(c,i){if(save.moves.indexOf('ic'+i)>=0)mine.push(i);});
