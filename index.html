@@ -1073,6 +1073,9 @@ var crowd={n:0,list:[],hype:0,was:false,bad:false,body:null,head:null,armL:null,
   var ag=new T.BoxGeometry(0.09,0.44,0.09);ag.translate(0,-0.2,0);
   function inst(geo){var m=new T.InstancedMesh(geo,new T.MeshToonMaterial({color:0xffffff,gradientMap:grad}),crowd.n);m.frustumCulled=false;scene.add(m);return m;}
   crowd.body=inst(new T.CylinderGeometry(0.19,0.25,0.72,7));crowd.head=inst(new T.SphereGeometry(0.16,8,6));crowd.armL=inst(ag);crowd.armR=inst(ag);
+  try{var hg=new T.SphereGeometry(0.176,8,6,0,PI*2,0,PI*0.52);hg.rotateX(-0.4);crowd.hair=inst(hg);                        // hair, eyes and shorts so each one reads as one of the ballers
+    var e1=new T.BoxGeometry(0.036,0.05,0.02),e2=new T.BoxGeometry(0.036,0.05,0.02);e1.translate(0.06,0.01,0.152);e2.translate(-0.06,0.01,0.152);crowd.face=inst(mergeList([e1,e2]));
+    crowd.sh=inst(new T.CylinderGeometry(0.255,0.262,0.22,7));}catch(e){crowd.hair=crowd.face=crowd.sh=null;}
   var col=new T.Color();
   try{crowd.list.forEach(function(q,n){var sh=SH[(R()*SH.length)|0],sk=SK[(R()*SK.length)|0];
     crowd.body.setColorAt(n,col.setHex(sh));crowd.armL.setColorAt(n,col.setHex(sh));crowd.armR.setColorAt(n,col.setHex(sh));crowd.head.setColorAt(n,col.setHex(sk));});}catch(e){}
@@ -1249,7 +1252,15 @@ function npcStep(dt){
 }
 function npcUpdate(dt){if(npcBad)return;try{npcStep(dt);}catch(e){npcBad=true;}}
 function sceneryUpdate(dt){if(crowd.bad)return;try{sceneryStep(dt);}catch(e){crowd.bad=true;}}
+function crowdDress(){ // the people on the benches are the game's own ballers: same skin, hair, eyes, jersey and shorts
+  crowd.dressed=true;var col=new T.Color();
+  crowd.list.forEach(function(q,n){var ch=CHARS[(n*7+3)%CHARS.length],co=COSTUME[ch.id]||{},sl=typeof co.sleeves==='number'?co.sleeves:(co.sleeves?ch.j:ch.skin);
+    crowd.body.setColorAt(n,col.setHex(typeof co.coat==='number'?co.coat:ch.j));crowd.armL.setColorAt(n,col.setHex(sl));crowd.armR.setColorAt(n,col.setHex(sl));crowd.head.setColorAt(n,col.setHex(ch.skin));
+    if(crowd.hair){crowd.hair.setColorAt(n,col.setHex(ch.hair));crowd.face.setColorAt(n,col.setHex(ch.eye||0x14121c));crowd.sh.setColorAt(n,col.setHex(typeof co.pants==='number'?co.pants:ch.s));}});
+  [crowd.body,crowd.armL,crowd.armR,crowd.head,crowd.hair,crowd.face,crowd.sh].forEach(function(m){if(m&&m.instanceColor)m.instanceColor.needsUpdate=true;});
+}
 function sceneryStep(dt){
+  if(!crowd.dressed)try{crowdDress();}catch(e){crowd.dressed=true;}
   var t=game.time,inGame=game.state!=='menu',sc=(game.sc||0)!==crowd.scN,i,q,d=crowd.d;crowd.scN=game.sc||0;
   if(sc&&inGame){crowd.hype=1;try{noise(0.9,ball.dunk?0.16:0.1);}catch(e){}refs.forEach(function(r){r.sig=1.3;});}
   crowd.hype=Math.max(post&&post.phase==='mvp'?0.75:0,crowd.hype-dt*0.5);
@@ -1258,11 +1269,11 @@ function sceneryStep(dt){
     q=crowd.list[i];
     var w=Math.sin(t*q.sp*2+q.ph),jp=hy*Math.abs(Math.sin(t*8*q.sp+q.ph))*0.38,y=q.y+jp,up=0.25+hy*2.45+(hy>0.05?0.3*Math.sin(t*11+q.ph):0.05*w),c=Math.cos(q.ry),sn=Math.sin(q.ry),lean=0.05*w;
     d.scale.setScalar(q.s);d.rotation.set(0,q.ry,lean);d.position.set(q.x,y+0.36*q.s,q.z);d.updateMatrix();crowd.body.setMatrixAt(i,d.matrix);
-    d.rotation.set(0,q.ry,0);d.position.set(q.x,y+0.9*q.s,q.z);d.updateMatrix();crowd.head.setMatrixAt(i,d.matrix);
+    d.rotation.set(0,q.ry,0);d.position.set(q.x,y+0.9*q.s,q.z);d.updateMatrix();crowd.head.setMatrixAt(i,d.matrix);if(crowd.hair){crowd.hair.setMatrixAt(i,d.matrix);crowd.face.setMatrixAt(i,d.matrix);d.position.set(q.x,y+0.1*q.s,q.z);d.updateMatrix();crowd.sh.setMatrixAt(i,d.matrix);}
     d.rotation.set(0,q.ry,-up);d.position.set(q.x+0.27*q.s*c,y+0.68*q.s,q.z-0.27*q.s*sn);d.updateMatrix();crowd.armL.setMatrixAt(i,d.matrix);
     d.rotation.set(0,q.ry,up);d.position.set(q.x-0.27*q.s*c,y+0.68*q.s,q.z+0.27*q.s*sn);d.updateMatrix();crowd.armR.setMatrixAt(i,d.matrix);
   }
-  crowd.body.instanceMatrix.needsUpdate=crowd.head.instanceMatrix.needsUpdate=crowd.armL.instanceMatrix.needsUpdate=crowd.armR.instanceMatrix.needsUpdate=true;
+  crowd.body.instanceMatrix.needsUpdate=crowd.head.instanceMatrix.needsUpdate=crowd.armL.instanceMatrix.needsUpdate=crowd.armR.instanceMatrix.needsUpdate=true;if(crowd.hair)crowd.hair.instanceMatrix.needsUpdate=crowd.face.instanceMatrix.needsUpdate=crowd.sh.instanceMatrix.needsUpdate=true;
   for(i=0;i<refs.length;i++){                              // referees trail the ball up and down their sideline and signal a basket
     var r=refs[i],j=r.j,show=inGame&&!game.practice&&!(post&&post.phase==='mvp');r.g.visible=show;if(!show)continue;
     if(r.cx===undefined)r.cx=r.x;
