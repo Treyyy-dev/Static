@@ -4,7 +4,7 @@
 // if that player leaves, the server hands the match to another player.
 'use strict';
 const http = require('http'), crypto = require('crypto');
-const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, WIN = 21, WAIT = +process.env.WAIT || 25;   // seconds a search waits before the CPU fills the match
+const PORT = process.env.PORT || 10000, MAXMSG = 64 * 1024, WIN = 21, WAIT = +process.env.WAIT || 20;   // seconds a search waits before the CPU fills the match
 
 /* ---------- tiny WebSocket layer ---------- */
 function frame(op, buf) {
