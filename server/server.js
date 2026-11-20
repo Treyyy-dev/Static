@@ -119,6 +119,37 @@ function leave(m) {
     r.host.c.send({ t: 'host', humans: r.members.map(x => x.slot) });
   } else r.host.c.send({ t: 'left', s: m.slot });
 }
+/* the gym: a room anyone can walk into at any time. The server relays where people are and decides who has each station */
+const gyms = [];
+function gpub(m) { return { id: m.gid, name: m.name, c: m.load ? m.load.c : '', bb: m.load ? m.load.bb : '', x: m.gs.x, z: m.gs.z, f: m.gs.f }; }
+function gymCast(g, d, not) { g.members.forEach(x => { if (x !== not) x.c.send(d); }); }
+function gymLeave(m) {
+  const g = m.gym; if (!g) return; m.gym = null; g.members.delete(m.gid);
+  for (let i = 0; i < g.occ.length; i++) if (g.occ[i] === m.gid) { g.occ[i] = 0; gymCast(g, { t: 'gocc', s: i, id: 0 }); }
+  gymCast(g, { t: 'gdel', id: m.gid });
+  if (!g.members.size) { const i = gyms.indexOf(g); if (i >= 0) gyms.splice(i, 1); }
+}
+function gymMsg(m, d) {
+  const g = m.gym, n = v => (typeof v === 'number' && isFinite(v) ? Math.max(-40, Math.min(40, Math.round(v * 100) / 100)) : 0);
+  if (d.t === 'gym') {
+    if (m.room || g) return true;
+    m.load = cleanLoad(d.load);
+    let room = null; for (const q of gyms) if (q.members.size < 10) { room = q; break; }
+    if (!room) { room = { members: new Map(), occ: new Array(18).fill(0), seq: 0 }; gyms.push(room); }
+    m.gid = ++room.seq; m.gym = room; m.gs = { x: 0, z: 15.3, f: 3.14, r: 0 };
+    m.c.send({ t: 'gymin', id: m.gid, occ: room.occ, list: [...room.members.values()].map(gpub) });
+    room.members.set(m.gid, m); gymCast(room, { t: 'gadd', p: gpub(m) }, m); return true;
+  }
+  if (d.t === 'gleave') { gymLeave(m); return true; }
+  if (d.t === 'gp' || d.t === 'guse' || d.t === 'gfree') {
+    if (!g) return true;
+    if (d.t === 'gp') { m.gs = { x: n(d.x), z: n(d.z), f: n(d.f), r: Math.max(0, Math.min(1e6, d.r | 0)) }; gymCast(g, { t: 'gp', id: m.gid, x: m.gs.x, z: m.gs.z, f: m.gs.f, r: m.gs.r }, m); }
+    else if (d.t === 'guse') { const i = d.s | 0; if (i < 0 || i >= g.occ.length || g.occ.indexOf(m.gid) >= 0) return true; if (g.occ[i]) m.c.send({ t: 'gbusy', s: i }); else { g.occ[i] = m.gid; gymCast(g, { t: 'gocc', s: i, id: m.gid }); } }
+    else for (let i = 0; i < g.occ.length; i++) if (g.occ[i] === m.gid) { g.occ[i] = 0; gymCast(g, { t: 'gocc', s: i, id: 0 }); }
+    return true;
+  }
+  return false;
+}
 function cleanLoad(l) {
   const s = v => (typeof v === 'string' ? v.slice(0, 24) : ''), d = (l && l.drs) || {};
   l = l || {};
@@ -126,6 +157,8 @@ function cleanLoad(l) {
 }
 function onMessage(m, d) {
   const r = m.room;
+  if (d && typeof d.t === 'string' && d.t[0] === 'g' && gymMsg(m, d)) return;
+  if (d && d.t === 'find' && m.gym) gymLeave(m);
   if (d.t === 'ping') return;
   if (d.t === 'hello') {                                 // who this is: the private id never leaves the server, friends see only the code
     if (m.code || typeof d.pid !== 'string' || d.pid.length < 16 || d.pid.length > 64) return;
@@ -235,7 +268,7 @@ server.on('upgrade', (req, sock) => {
   sock.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + acc + '\r\n\r\n');
   const m = { uid: ++partySeq, room: null, slot: -1, load: cleanLoad(null), c: null, code: '', name: 'Player', icon: 0, bn: 0, inv: new Map(), party: null, msgT: [], reqT: [], flist: new Set() };
   online++;
-  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); partyLeave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
+  m.c = attach(sock, d => onMessage(m, d), () => { online--; clearInterval(beat); leave(m); gymLeave(m); partyLeave(m); if (m.code && byCode.get(m.code) === m) byCode.delete(m.code); });
   const beat = setInterval(() => { if (!m.c.alive) { m.c.close(); return; } m.c.alive = false; m.c.ping(); }, 30000);
 });
 server.listen(PORT, () => console.log('Static server listening on ' + PORT));
